@@ -1,0 +1,20 @@
+{
+  "name": "ReliefOps Bangladesh",
+  "short_name": "ReliefOps",
+  "description": "Bangladesh flood relief coordination, shelter tracking, and district risk mapping.",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f7fbf9",
+  "theme_color": "#006A4E",
+  "orientation": "portrait-primary",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/reliefops-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
