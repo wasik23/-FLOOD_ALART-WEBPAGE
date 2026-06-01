@@ -11,6 +11,7 @@ import './models/index.js'
 import alertsRouter from './routes/alerts.js'
 import authRouter from './routes/auth.js'
 import districtsRouter from './routes/districts.js'
+import ffwcRouter from './routes/ffwc.js'
 import sheltersRouter from './routes/shelters.js'
 import tasksRouter from './routes/tasks.js'
 import reportsRouter from './routes/reports.js'
@@ -49,6 +50,7 @@ app.get('/health', (_req, res) => {
 app.use('/auth', authRouter)
 app.use('/api/alerts', alertsRouter)
 app.use('/api/districts', districtsRouter)
+app.use('/api/ffwc', ffwcRouter)
 app.use('/api/shelters', sheltersRouter)
 app.use('/api/tasks', tasksRouter)
 app.use('/api/reports', reportsRouter)
