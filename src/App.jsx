@@ -5,37 +5,35 @@ import AppLayout from './components/AppLayout.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import AdminDashboard from './pages/AdminDashboard.jsx'
 import AuthForm from './pages/AuthForm.jsx'
+import CoordinatorDashboard from './pages/CoordinatorDashboard.jsx'
 import Dashboard from './pages/Dashboard.jsx'
+import DonationPage from './pages/DonationPage.jsx'
 import GetAlerts from './pages/GetAlerts.jsx'
+import HelpRequestPage from './pages/HelpRequestPage.jsx'
+import Home from './pages/Home.jsx'
 import MapPage from './pages/MapPage.jsx'
 import NotFound from './pages/NotFound.jsx'
-import RolePage from './pages/RolePage.jsx'
+import RecordsPage from './pages/RecordsPage.jsx'
 import Shelters from './pages/Shelters.jsx'
 import SituationReport from './pages/SituationReport.jsx'
 import Unauthorized from './pages/Unauthorized.jsx'
 import VolunteerCoordination from './pages/VolunteerCoordination.jsx'
 
-function RoleRedirect() {
-  const { isAuthenticated, isReady, user } = useAuth()
-
-  if (!isReady) {
-    return <div className="page-shell text-sm font-semibold">Checking session...</div>
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />
-  }
-
-  return <Navigate to={ROLE_HOME_PATHS[user.role]} replace />
+function RoleHomeRedirect() {
+  const { user } = useAuth()
+  return <Navigate to={ROLE_HOME_PATHS[user.role] || '/'} replace />
 }
 
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<RoleRedirect />} />
+      <Route path="/" element={<Home />} />
       <Route path="/login" element={<AuthForm mode="login" />} />
       <Route path="/register" element={<AuthForm mode="register" />} />
       <Route path="/alerts" element={<GetAlerts />} />
+      <Route path="/donate" element={<DonationPage />} />
+      <Route path="/map" element={<MapPage />} />
+      <Route path="/request-help" element={<HelpRequestPage />} />
 
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
@@ -50,12 +48,6 @@ function App() {
         </Route>
       </Route>
 
-      <Route element={<ProtectedRoute allowedRoles={[ROLES.PUBLIC]} />}>
-        <Route element={<AppLayout />}>
-          <Route path="/public" element={<RolePage role={ROLES.PUBLIC} />} />
-        </Route>
-      </Route>
-
       <Route element={<ProtectedRoute allowedRoles={[ROLES.VOLUNTEER]} />}>
         <Route element={<AppLayout />}>
           <Route path="/volunteer" element={<VolunteerCoordination />} />
@@ -64,7 +56,7 @@ function App() {
 
       <Route element={<ProtectedRoute allowedRoles={[ROLES.NGO]} />}>
         <Route element={<AppLayout />}>
-          <Route path="/coordinator" element={<RolePage role={ROLES.NGO} />} />
+          <Route path="/coordinator" element={<CoordinatorDashboard />} />
         </Route>
       </Route>
 
@@ -78,14 +70,14 @@ function App() {
         element={<ProtectedRoute allowedRoles={[ROLES.NGO, ROLES.ADMIN]} />}
       >
         <Route element={<AppLayout />}>
+          <Route path="/records" element={<RecordsPage />} />
           <Route path="/situation-report" element={<SituationReport />} />
         </Route>
       </Route>
 
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
-          <Route path="/map" element={<MapPage />} />
-          <Route path="/home" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/home" element={<RoleHomeRedirect />} />
         </Route>
       </Route>
 
