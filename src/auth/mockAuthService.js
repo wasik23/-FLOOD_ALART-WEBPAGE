@@ -6,13 +6,6 @@ const ISSUER = 'final-dev-auth'
 
 const seedUsers = [
   {
-    id: 'usr_public',
-    name: 'Public User',
-    email: 'public@example.com',
-    password: 'password',
-    role: ROLES.PUBLIC,
-  },
-  {
     id: 'usr_volunteer',
     name: 'Volunteer User',
     email: 'volunteer@example.com',
@@ -57,7 +50,7 @@ const sanitizeUser = (user) => ({
   id: user.id,
   name: user.name,
   email: user.email,
-  role: user.role,
+  role: user.role === 'ngo' ? ROLES.NGO : user.role,
 })
 
 const createMockJwt = (user) => {
@@ -85,7 +78,18 @@ const readUsers = () => {
     return seedUsers
   }
 
-  return JSON.parse(storedUsers)
+  const users = JSON.parse(storedUsers)
+    .filter((user) => user.role !== 'public')
+    .map((user) => ({
+      ...user,
+      role: user.role === 'ngo' ? ROLES.NGO : user.role,
+    }))
+
+  if (JSON.stringify(users) !== storedUsers) {
+    writeUsers(users)
+  }
+
+  return users
 }
 
 const writeUsers = (users) => {
@@ -166,7 +170,12 @@ export const mockAuthService = {
         return null
       }
 
-      return { token, user: decoded.user }
+      if (decoded.user.role === 'public') {
+        localStorage.removeItem(TOKEN_KEY)
+        return null
+      }
+
+      return { token, user: sanitizeUser(decoded.user) }
     } catch {
       localStorage.removeItem(TOKEN_KEY)
       return null

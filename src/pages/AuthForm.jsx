@@ -4,14 +4,9 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ROLE_HOME_PATHS, ROLE_OPTIONS, ROLES } from '../auth/roles.js'
 import { useAuth } from '../auth/useAuth.js'
+import BrandHeader from '../components/BrandHeader.jsx'
 import SiteFooter from '../components/SiteFooter.jsx'
-
-const demoAccounts = [
-  'public@example.com',
-  'volunteer@example.com',
-  'coordinator@example.com',
-  'admin@example.com',
-]
+import { upsertVolunteerProfile } from '../data/reliefData.js'
 
 function AuthForm({ mode }) {
   const { t } = useTranslation()
@@ -23,7 +18,11 @@ function AuthForm({ mode }) {
     name: '',
     email: '',
     password: '',
-    role: ROLES.PUBLIC,
+    role: ROLES.VOLUNTEER,
+    imageData: '',
+    phone: '',
+    address: '',
+    guardianPhone: '',
   })
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -48,6 +47,21 @@ function AuthForm({ mode }) {
     }))
   }
 
+  const updateImage = (event) => {
+    const file = event.target.files?.[0]
+
+    if (!file) {
+      setForm((current) => ({ ...current, imageData: '' }))
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      setForm((current) => ({ ...current, imageData: reader.result }))
+    }
+    reader.readAsDataURL(file)
+  }
+
   const submitForm = async (event) => {
     event.preventDefault()
     setError('')
@@ -62,6 +76,20 @@ function AuthForm({ mode }) {
             role: form.role,
           })
 
+      if (isRegister && nextSession.user.role === ROLES.VOLUNTEER) {
+        upsertVolunteerProfile({
+          userId: nextSession.user.id,
+          email: nextSession.user.email,
+          name: form.name.trim(),
+          imageData: form.imageData,
+          phone: form.phone.trim(),
+          address: form.address.trim(),
+          guardianPhone: form.guardianPhone.trim(),
+          location: '',
+          skills: [],
+        })
+      }
+
       navigate(location.state?.from?.pathname ?? ROLE_HOME_PATHS[nextSession.user.role], {
         replace: true,
       })
@@ -74,7 +102,21 @@ function AuthForm({ mode }) {
 
   return (
     <>
-      <main className="auth-shell">
+      <BrandHeader>
+        <Link className="rounded-md px-3 py-2 text-white/90 hover:bg-white/10" to="/">
+          Home
+        </Link>
+        <Link className="rounded-md px-3 py-2 text-white/90 hover:bg-white/10" to="/donate">
+          Donate
+        </Link>
+        <Link
+          className="rounded-md bg-white px-3 py-2 text-sky-800"
+          to={isRegister ? '/login' : '/register'}
+        >
+          {isRegister ? t('auth.signIn') : t('auth.register')}
+        </Link>
+      </BrandHeader>
+      <main className="auth-shell max-w-3xl lg:grid-cols-1">
         <section className="auth-panel" aria-labelledby="auth-title">
           <div>
             <p className="text-sm font-semibold uppercase tracking-wide text-primary">
@@ -90,18 +132,68 @@ function AuthForm({ mode }) {
 
           <form className="mt-8 grid gap-5" onSubmit={submitForm}>
             {isRegister ? (
-              <label className="form-label">
-                {t('auth.fullName')}
-                <input
-                  autoComplete="name"
-                  className="form-input"
-                  name="name"
-                  onChange={updateField}
-                  required
-                  type="text"
-                  value={form.name}
-                />
-              </label>
+              <>
+                <label className="form-label">
+                  {t('auth.fullName')}
+                  <input
+                    autoComplete="name"
+                    className="form-input"
+                    name="name"
+                    onChange={updateField}
+                    required
+                    type="text"
+                    value={form.name}
+                  />
+                </label>
+                {form.role === ROLES.VOLUNTEER ? (
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <label className="form-label md:col-span-2">
+                      Volunteer image
+                      <input
+                        accept="image/*"
+                        className="form-input"
+                        onChange={updateImage}
+                        required
+                        type="file"
+                      />
+                    </label>
+                    <label className="form-label">
+                      Phone number
+                      <input
+                        autoComplete="tel"
+                        className="form-input"
+                        name="phone"
+                        onChange={updateField}
+                        required
+                        type="tel"
+                        value={form.phone}
+                      />
+                    </label>
+                    <label className="form-label">
+                      Guardian phone
+                      <input
+                        autoComplete="tel"
+                        className="form-input"
+                        name="guardianPhone"
+                        onChange={updateField}
+                        required
+                        type="tel"
+                        value={form.guardianPhone}
+                      />
+                    </label>
+                    <label className="form-label md:col-span-2">
+                      Address
+                      <textarea
+                        className="form-input min-h-[96px] resize-y"
+                        name="address"
+                        onChange={updateField}
+                        required
+                        value={form.address}
+                      />
+                    </label>
+                  </div>
+                ) : null}
+              </>
             ) : null}
 
             <label className="form-label">
@@ -131,25 +223,27 @@ function AuthForm({ mode }) {
               />
             </label>
 
-            <fieldset>
-              <legend className="mb-2 text-sm font-semibold text-slate-800">
-                {t('auth.role')}
-              </legend>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {ROLE_OPTIONS.map((role) => (
-                  <label className="role-option" key={role.value}>
-                    <input
-                      checked={form.role === role.value}
-                      name="role"
-                      onChange={updateField}
-                      type="radio"
-                      value={role.value}
-                    />
-                    <span>{t(`roles.${role.value}`)}</span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
+            {!isRegister ? (
+              <fieldset>
+                <legend className="mb-2 text-sm font-semibold text-slate-800">
+                  {t('auth.role')}
+                </legend>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {ROLE_OPTIONS.map((role) => (
+                    <label className="role-option" key={role.value}>
+                      <input
+                        checked={form.role === role.value}
+                        name="role"
+                        onChange={updateField}
+                        type="radio"
+                        value={role.value}
+                      />
+                      <span>{t(`roles.${role.value}`)}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            ) : null}
 
             {error ? (
               <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
@@ -173,23 +267,6 @@ function AuthForm({ mode }) {
           </p>
         </section>
 
-        <aside className="mock-panel">
-          <p className="text-sm font-semibold uppercase tracking-wide text-accent">
-            {t('auth.mockUsers')}
-          </p>
-          <ul className="mt-4 grid gap-3">
-            {demoAccounts.map((email) => (
-              <li key={email}>
-                <code className="rounded bg-primary-50 px-2 py-1 text-sm text-primary-800">
-                  {email}
-                </code>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-5 text-sm text-slate-600">
-            {t('auth.seededPassword')} <strong>password</strong>
-          </p>
-        </aside>
       </main>
       <SiteFooter />
     </>

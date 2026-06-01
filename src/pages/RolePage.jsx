@@ -4,7 +4,7 @@ import { useAuth } from '../auth/useAuth.js'
 
 function RolePage({ role }) {
   const { t } = useTranslation()
-  const { token, user } = useAuth()
+  const { user } = useAuth()
   const roleLabel = t(`roles.${role}`)
   const tasks = t(`rolePage.tasks.${role}`, { returnObjects: true })
 
@@ -65,15 +65,6 @@ function RolePage({ role }) {
               </li>
             ))}
           </ul>
-        </article>
-
-        <article className="rounded-lg border border-primary-100 bg-white p-6 shadow-soft lg:col-span-2">
-          <h2 className="text-lg font-bold text-slate-950">
-            {t('rolePage.jwt')}
-          </h2>
-          <code className="mt-4 block overflow-hidden break-all rounded-md bg-slate-950 p-4 text-xs leading-6 text-primary-100">
-            {token}
-          </code>
         </article>
       </div>
     </section>
