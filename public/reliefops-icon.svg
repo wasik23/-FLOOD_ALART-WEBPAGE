@@ -1,5 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img">
-  <rect width="512" height="512" rx="96" fill="#006A4E"/>
-  <circle cx="256" cy="256" r="118" fill="#F42A41"/>
-  <path fill="#fff" d="M238 144h36v96h96v36h-96v96h-36v-96h-96v-36h96z"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">ReliefOps logo</title>
+  <defs>
+    <linearGradient id="water" x1="96" x2="416" y1="326" y2="326" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0284c7"/>
+      <stop offset="1" stop-color="#0f766e"/>
+    </linearGradient>
+  </defs>
+  <circle cx="256" cy="256" r="248" fill="#f8fafc"/>
+  <circle cx="256" cy="256" r="232" fill="none" stroke="#0f766e" stroke-width="18"/>
+  <path fill="#006a4e" d="M256 82 382 130v100c0 96-52 154-126 200-74-46-126-104-126-200V130z"/>
+  <path fill="#ffffff" d="M256 118 350 154v78c0 70-35 116-94 154-59-38-94-84-94-154v-78z"/>
+  <path fill="url(#water)" d="M132 318c38-24 73-24 111 0 35 22 70 22 105 0 22-14 44-20 68-18v50c-24-2-46 4-68 18-35 22-70 22-105 0-38-24-73-24-111 0z"/>
+  <path fill="#0284c7" d="M132 378c38-20 73-20 111 0 35 18 70 18 105 0 22-11 44-16 68-14v36c-24-2-46 3-68 14-35 18-70 18-105 0-38-20-73-20-111 0z" opacity=".75"/>
+  <path fill="#f42a41" d="M236 166h40v58h58v40h-58v58h-40v-58h-58v-40h58z"/>
+  <path fill="#0f766e" d="M92 430h328v28H92z" opacity=".12"/>
 </svg>

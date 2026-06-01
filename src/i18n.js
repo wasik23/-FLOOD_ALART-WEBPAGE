@@ -19,9 +19,8 @@ const resources = {
         signOut: 'Sign out',
       },
       roles: {
-        public: 'Public',
         volunteer: 'Volunteer',
-        ngo: 'NGO/Coordinator',
+        coordinator: 'NGO/Coordinator',
         admin: 'Admin',
       },
       auth: {
@@ -29,7 +28,7 @@ const resources = {
         createAccount: 'Create account',
         welcomeBack: 'Welcome back',
         intro:
-          'Use the development mock service to issue a local JWT and enter the workspace for the selected role.',
+          'Sign in to access the protected volunteer, NGO, or admin workspace.',
         fullName: 'Full name',
         email: 'Email',
         password: 'Password',
@@ -40,8 +39,8 @@ const resources = {
         register: 'Register',
         alreadyRegistered: 'Already registered?',
         needAccount: 'Need an account?',
-        mockUsers: 'Mock dev users',
-        seededPassword: 'Password for seeded users:',
+        mockUsers: 'Demo access',
+        seededPassword: 'Temporary access password:',
         checkingSession: 'Checking session...',
       },
       dashboard: {
@@ -67,10 +66,9 @@ const resources = {
         acceptedBy: 'Accepted by {{name}}',
         waitingVolunteer: 'Waiting for volunteer',
         descriptions: {
-          public: 'Submit needs, track requests, and view public updates.',
           volunteer:
             'Claim field tasks, report progress, and coordinate availability.',
-          ngo:
+          coordinator:
             'Review incoming needs, assign volunteers, and coordinate response plans.',
           admin: 'Manage users, audit access, and oversee system-wide controls.',
         },
@@ -84,19 +82,13 @@ const resources = {
         email: 'Email',
         role: 'Role',
         actions: 'Role actions',
-        jwt: 'Local JWT',
         tasks: {
-          public: [
-            'Create aid request',
-            'Track request status',
-            'Update contact details',
-          ],
           volunteer: [
             'Review assigned tasks',
             'Submit field report',
             'Set availability',
           ],
-          ngo: [
+          coordinator: [
             'Prioritize open cases',
             'Assign volunteer teams',
             'Publish response notes',
@@ -148,7 +140,7 @@ const resources = {
         },
       },
       map: {
-        eyebrow: 'Leaflet.js flood intelligence',
+        eyebrow: 'Real-time flood monitoring',
         title: 'Bangladesh flood risk map',
         districts: '{{count}} districts',
         loading: 'Loading district boundaries',
@@ -372,6 +364,7 @@ const resources = {
         public: 'সাধারণ ব্যবহারকারী',
         volunteer: 'স্বেচ্ছাসেবক',
         ngo: 'এনজিও/সমন্বয়কারী',
+        coordinator: 'এনজিও/সমন্বয়কারী',
         admin: 'অ্যাডমিন',
       },
       auth: {
@@ -379,7 +372,7 @@ const resources = {
         createAccount: 'অ্যাকাউন্ট তৈরি করুন',
         welcomeBack: 'ফিরে আসায় স্বাগতম',
         intro:
-          'ডেভেলপমেন্ট মক সার্ভিস দিয়ে স্থানীয় JWT তৈরি করে নির্বাচিত ভূমিকায় কর্মক্ষেত্রে প্রবেশ করুন।',
+          'সুরক্ষিত স্বেচ্ছাসেবক, এনজিও বা অ্যাডমিন কর্মক্ষেত্রে প্রবেশ করতে সাইন ইন করুন।',
         fullName: 'পূর্ণ নাম',
         email: 'ইমেইল',
         password: 'পাসওয়ার্ড',
@@ -420,7 +413,7 @@ const resources = {
           public: 'প্রয়োজন জমা দিন, অনুরোধের অবস্থা দেখুন, এবং পাবলিক আপডেট পান।',
           volunteer:
             'মাঠের কাজ নিন, অগ্রগতি জানান, এবং নিজের উপস্থিতি সমন্বয় করুন।',
-          ngo:
+          coordinator:
             'নতুন প্রয়োজন যাচাই করুন, স্বেচ্ছাসেবক বরাদ্দ করুন, এবং সাড়া পরিকল্পনা সমন্বয় করুন।',
           admin:
             'ব্যবহারকারী পরিচালনা, প্রবেশাধিকার অডিট, এবং সিস্টেম নিয়ন্ত্রণ তদারকি করুন।',
@@ -447,7 +440,7 @@ const resources = {
             'মাঠ প্রতিবেদন জমা দিন',
             'উপস্থিতি নির্ধারণ করুন',
           ],
-          ngo: [
+          coordinator: [
             'খোলা কেস অগ্রাধিকার দিন',
             'স্বেচ্ছাসেবক দল বরাদ্দ করুন',
             'সাড়া নোট প্রকাশ করুন',
@@ -499,7 +492,7 @@ const resources = {
         },
       },
       map: {
-        eyebrow: 'Leaflet.js বন্যা তথ্য',
+        eyebrow: 'লাইভ বন্যা পর্যবেক্ষণ',
         title: 'বাংলাদেশ বন্যা ঝুঁকি মানচিত্র',
         districts: '{{count}} জেলা',
         loading: 'জেলার সীমানা লোড হচ্ছে',
