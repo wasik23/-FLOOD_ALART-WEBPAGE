@@ -1,9 +1,32 @@
-# React + Vite
+# ReliefOps
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+ReliefOps is a flood early warning and relief coordination web app. It helps the public request help without an account, lets volunteers register for field work, and gives NGO/admin users protected tools to manage records, shelters, alerts, maps, and donation information.
 
-Currently, two official plugins are available:
+## Key Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-# FLOOD_ALART-WEBPAGE
+- Public landing page with flood updates, water level outlook, donation links, and contact information
+- No-login public help request form
+- SMS alert subscription by district and upazila
+- Volunteer registration with photo, phone, address, guardian contact, skills, and location
+- NGO/admin records page for volunteer profiles, public help requests, and donation account details
+- Protected role-based workspaces for volunteer, NGO/coordinator, and admin users
+- Bangladesh district map, shelter directory, admin controls, and realtime alert/task socket hooks
+
+## Development
+
+```bash
+npm install
+npm run dev
+```
+
+The frontend runs with Vite. The optional backend is in `server/` and provides REST, Socket.IO, auth, SMS subscription, and database-backed relief operations APIs.
+
+## Demo Access
+
+The current frontend still uses local demo authentication while backend integration is completed.
+
+- `volunteer@example.com`
+- `coordinator@example.com`
+- `admin@example.com`
+
+Password: `password`
