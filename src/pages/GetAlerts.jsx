@@ -102,9 +102,6 @@ function GetAlerts() {
         <Link className="rounded-md bg-white px-3 py-2 text-sky-800" to="/donate">
           Donate now
         </Link>
-        <Link className="rounded-md px-3 py-2 text-white/90 hover:bg-white/10" to="/register">
-          Volunteer register
-        </Link>
       </BrandHeader>
       <main className="page-shell">
         <div className="mx-auto max-w-xl rounded-lg border border-primary-100 bg-white p-8 shadow-soft">
@@ -182,9 +179,6 @@ function GetAlerts() {
       </Link>
       <Link className="rounded-md bg-white px-3 py-2 text-sky-800" to="/donate">
         Donate now
-      </Link>
-      <Link className="rounded-md px-3 py-2 text-white/90 hover:bg-white/10" to="/register">
-        Volunteer register
       </Link>
     </BrandHeader>
     <main className="page-shell">

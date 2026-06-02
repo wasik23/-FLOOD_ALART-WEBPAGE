@@ -28,8 +28,10 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
-      <Route path="/login" element={<AuthForm mode="login" />} />
-      <Route path="/register" element={<AuthForm mode="register" />} />
+      <Route path="/login" element={<AuthForm mode="login" role={ROLES.VOLUNTEER} />} />
+      <Route path="/register" element={<AuthForm mode="register" role={ROLES.VOLUNTEER} />} />
+      <Route path="/ngo" element={<AuthForm mode="login" role={ROLES.NGO} />} />
+      <Route path="/admin" element={<AuthForm mode="login" role={ROLES.ADMIN} />} />
       <Route path="/alerts" element={<GetAlerts />} />
       <Route path="/donate" element={<DonationPage />} />
       <Route path="/map" element={<MapPage />} />
@@ -62,7 +64,7 @@ function App() {
 
       <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN]} />}>
         <Route element={<AppLayout />}>
-          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
         </Route>
       </Route>
 

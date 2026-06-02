@@ -18,5 +18,5 @@ export const ROLE_LABELS = ROLE_OPTIONS.reduce((labels, role) => {
 export const ROLE_HOME_PATHS = {
   [ROLES.VOLUNTEER]: '/volunteer',
   [ROLES.NGO]: '/coordinator',
-  [ROLES.ADMIN]: '/admin',
+  [ROLES.ADMIN]: '/admin/dashboard',
 }

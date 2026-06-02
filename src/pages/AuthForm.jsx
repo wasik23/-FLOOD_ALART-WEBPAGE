@@ -2,15 +2,40 @@ import { useMemo, useState } from 'react'
 import PropTypes from 'prop-types'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ROLE_HOME_PATHS, ROLE_OPTIONS, ROLES } from '../auth/roles.js'
+import { ROLE_HOME_PATHS, ROLES } from '../auth/roles.js'
 import { useAuth } from '../auth/useAuth.js'
 import BrandHeader from '../components/BrandHeader.jsx'
 import SiteFooter from '../components/SiteFooter.jsx'
 import { upsertVolunteerProfile } from '../data/reliefData.js'
 
-function AuthForm({ mode }) {
+const authPageCopy = {
+  [ROLES.VOLUNTEER]: {
+    eyebrow: 'Volunteer access',
+    loginTitle: 'Volunteer sign in',
+    registerTitle: 'Volunteer registration',
+    intro:
+      'Volunteers can register, sign in, update field availability, and submit relief progress reports.',
+  },
+  [ROLES.NGO]: {
+    eyebrow: 'NGO access',
+    loginTitle: 'NGO coordinator login',
+    registerTitle: 'NGO coordinator login',
+    intro:
+      'NGO coordinators can review requests, assign volunteers, and manage relief operations.',
+  },
+  [ROLES.ADMIN]: {
+    eyebrow: 'Admin access',
+    loginTitle: 'Admin login',
+    registerTitle: 'Admin login',
+    intro:
+      'Admins can manage system operations, alerts, NGO access, and district risk controls.',
+  },
+}
+
+function AuthForm({ mode, role }) {
   const { t } = useTranslation()
   const isRegister = mode === 'register'
+  const copy = authPageCopy[role]
   const navigate = useNavigate()
   const location = useLocation()
   const { isAuthenticated, login, register, user } = useAuth()
@@ -18,7 +43,7 @@ function AuthForm({ mode }) {
     name: '',
     email: '',
     password: '',
-    role: ROLES.VOLUNTEER,
+    role,
     imageData: '',
     phone: '',
     address: '',
@@ -33,7 +58,7 @@ function AuthForm({ mode }) {
       return isRegister ? t('auth.creating') : t('auth.signingIn')
     }
 
-    return isRegister ? t('auth.createAccount') : t('auth.signIn')
+    return isRegister ? 'Register volunteer' : t('auth.signIn')
   }, [isRegister, isSubmitting, t])
 
   if (isAuthenticated) {
@@ -69,11 +94,11 @@ function AuthForm({ mode }) {
 
     try {
       const nextSession = isRegister
-        ? await register(form)
+        ? await register({ ...form, role })
         : await login({
             email: form.email,
             password: form.password,
-            role: form.role,
+            role,
           })
 
       if (isRegister && nextSession.user.role === ROLES.VOLUNTEER) {
@@ -109,24 +134,26 @@ function AuthForm({ mode }) {
         <Link className="rounded-md px-3 py-2 text-white/90 hover:bg-white/10" to="/donate">
           Donate
         </Link>
-        <Link
-          className="rounded-md bg-white px-3 py-2 text-sky-800"
-          to={isRegister ? '/login' : '/register'}
-        >
-          {isRegister ? t('auth.signIn') : t('auth.register')}
-        </Link>
+        {role === ROLES.VOLUNTEER ? (
+          <Link
+            className="rounded-md bg-white px-3 py-2 text-sky-800"
+            to={isRegister ? '/login' : '/register'}
+          >
+            {isRegister ? t('auth.signIn') : 'Volunteer register'}
+          </Link>
+        ) : null}
       </BrandHeader>
       <main className="auth-shell max-w-3xl lg:grid-cols-1">
         <section className="auth-panel" aria-labelledby="auth-title">
           <div>
             <p className="text-sm font-semibold uppercase tracking-wide text-primary">
-              {t('auth.eyebrow')}
+              {copy.eyebrow}
             </p>
             <h1 id="auth-title" className="mt-3 text-4xl font-bold text-slate-950">
-              {isRegister ? t('auth.createAccount') : t('auth.welcomeBack')}
+              {isRegister ? copy.registerTitle : copy.loginTitle}
             </h1>
             <p className="mt-4 max-w-xl leading-7 text-slate-600">
-              {t('auth.intro')}
+              {copy.intro}
             </p>
           </div>
 
@@ -145,54 +172,52 @@ function AuthForm({ mode }) {
                     value={form.name}
                   />
                 </label>
-                {form.role === ROLES.VOLUNTEER ? (
-                  <div className="grid gap-5 md:grid-cols-2">
-                    <label className="form-label md:col-span-2">
-                      Volunteer image
-                      <input
-                        accept="image/*"
-                        className="form-input"
-                        onChange={updateImage}
-                        required
-                        type="file"
-                      />
-                    </label>
-                    <label className="form-label">
-                      Phone number
-                      <input
-                        autoComplete="tel"
-                        className="form-input"
-                        name="phone"
-                        onChange={updateField}
-                        required
-                        type="tel"
-                        value={form.phone}
-                      />
-                    </label>
-                    <label className="form-label">
-                      Guardian phone
-                      <input
-                        autoComplete="tel"
-                        className="form-input"
-                        name="guardianPhone"
-                        onChange={updateField}
-                        required
-                        type="tel"
-                        value={form.guardianPhone}
-                      />
-                    </label>
-                    <label className="form-label md:col-span-2">
-                      Address
-                      <textarea
-                        className="form-input min-h-[96px] resize-y"
-                        name="address"
-                        onChange={updateField}
-                        required
-                        value={form.address}
-                      />
-                    </label>
-                  </div>
-                ) : null}
+                <div className="grid gap-5 md:grid-cols-2">
+                  <label className="form-label md:col-span-2">
+                    Volunteer image
+                    <input
+                      accept="image/*"
+                      className="form-input"
+                      onChange={updateImage}
+                      required
+                      type="file"
+                    />
+                  </label>
+                  <label className="form-label">
+                    Phone number
+                    <input
+                      autoComplete="tel"
+                      className="form-input"
+                      name="phone"
+                      onChange={updateField}
+                      required
+                      type="tel"
+                      value={form.phone}
+                    />
+                  </label>
+                  <label className="form-label">
+                    Guardian phone
+                    <input
+                      autoComplete="tel"
+                      className="form-input"
+                      name="guardianPhone"
+                      onChange={updateField}
+                      required
+                      type="tel"
+                      value={form.guardianPhone}
+                    />
+                  </label>
+                  <label className="form-label md:col-span-2">
+                    Address
+                    <textarea
+                      className="form-input min-h-[96px] resize-y"
+                      name="address"
+                      onChange={updateField}
+                      required
+                      value={form.address}
+                    />
+                  </label>
+                </div>
               </>
             ) : null}
 
@@ -223,28 +248,6 @@ function AuthForm({ mode }) {
               />
             </label>
 
-            {!isRegister ? (
-              <fieldset>
-                <legend className="mb-2 text-sm font-semibold text-slate-800">
-                  {t('auth.role')}
-                </legend>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {ROLE_OPTIONS.map((role) => (
-                    <label className="role-option" key={role.value}>
-                      <input
-                        checked={form.role === role.value}
-                        name="role"
-                        onChange={updateField}
-                        type="radio"
-                        value={role.value}
-                      />
-                      <span>{t(`roles.${role.value}`)}</span>
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-            ) : null}
-
             {error ? (
               <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
                 {error}
@@ -256,15 +259,17 @@ function AuthForm({ mode }) {
             </button>
           </form>
 
-          <p className="mt-6 text-sm text-slate-600">
-            {isRegister ? t('auth.alreadyRegistered') : t('auth.needAccount')}{' '}
-            <Link
-              className="font-semibold text-primary"
-              to={isRegister ? '/login' : '/register'}
-            >
-              {isRegister ? t('auth.signIn') : t('auth.register')}
-            </Link>
-          </p>
+          {role === ROLES.VOLUNTEER ? (
+            <p className="mt-6 text-sm text-slate-600">
+              {isRegister ? t('auth.alreadyRegistered') : t('auth.needAccount')}{' '}
+              <Link
+                className="font-semibold text-primary"
+                to={isRegister ? '/login' : '/register'}
+              >
+                {isRegister ? t('auth.signIn') : t('auth.register')}
+              </Link>
+            </p>
+          ) : null}
         </section>
 
       </main>
@@ -275,6 +280,7 @@ function AuthForm({ mode }) {
 
 AuthForm.propTypes = {
   mode: PropTypes.oneOf(['login', 'register']).isRequired,
+  role: PropTypes.oneOf(Object.values(ROLES)).isRequired,
 }
 
 export default AuthForm

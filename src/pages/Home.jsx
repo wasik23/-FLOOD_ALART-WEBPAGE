@@ -20,14 +20,13 @@ const landingCopy = {
       news: 'Flood news',
       contact: 'Contact',
       request: 'Request help',
-      login: 'NGO/Admin login',
       language: 'বাংলা',
     },
     hero: {
       eyebrow: 'Bangladesh flood relief',
       title: 'Fast help for people facing flood emergencies.',
       body:
-        'Public users can view alerts, forecasts, donation details, and contact information without registration. Volunteers register before joining field work.',
+        'Public users can view alerts, forecasts, donation details, and contact information without registration.',
       donate: 'Donate now',
       contact: 'Contact us',
       request: 'Request help',
@@ -280,9 +279,6 @@ function Home() {
         </a>
         <Link className="rounded-md bg-accent px-3 py-2 text-white" to="/request-help">
           {copy.nav.request}
-        </Link>
-        <Link className="rounded-md bg-white px-3 py-2 text-sky-800" to="/login">
-          {copy.nav.login}
         </Link>
         <button
           className="rounded-md border border-white/40 px-3 py-2 text-white hover:bg-white/10"
