@@ -701,6 +701,8 @@ function AdminDashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           district: selectedDistrict,
+          severity: riskLevel,
+          title: `${riskLevel} flood alert - ${selectedDistrict}`,
           message: `[${riskLevel} flood alert - ${selectedDistrict}] ${message}`,
         }),
       })
@@ -719,7 +721,7 @@ function AdminDashboard() {
       localStorage.setItem(ADMIN_SMS_SENT_KEY, String(nextSmsSent))
       setLastBroadcast({
         district: selectedDistrict,
-        error: response.status === 404 ? payload.error : '',
+        error: payload.warning || (response.status === 404 ? payload.error : ''),
         failed,
         message,
         recipients: sent,

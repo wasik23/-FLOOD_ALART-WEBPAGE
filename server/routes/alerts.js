@@ -12,6 +12,21 @@ import {
 
 const router = Router()
 
+function emitAlert(req, alert, district = null) {
+  const io = req.app.get('io')
+  if (!io) return
+
+  io.emit('new_alert', {
+    id: `alert-${alert.id}`,
+    timestamp: alert.issuedAt,
+    title: alert.title,
+    message: alert.message,
+    severity: alert.severity,
+    district: district?.name || 'Bangladesh',
+    districtId: alert.districtId,
+  })
+}
+
 // GET /api/alerts — public; latest alerts with optional filters.
 router.get(
   '/',
@@ -75,17 +90,8 @@ router.post(
         issuedById: req.user.id,
       })
 
-      const io = req.app.get('io')
-      if (io) {
-        io.emit('new_alert', {
-          id: `alert-${alert.id}`,
-          timestamp: alert.issuedAt,
-          title: alert.title,
-          message: alert.message,
-          severity: alert.severity,
-          districtId: alert.districtId,
-        })
-      }
+      const district = districtId ? await District.findByPk(districtId) : null
+      emitAlert(req, alert, district)
 
       res.status(201).json({ alert })
     } catch (err) {
@@ -161,50 +167,80 @@ router.post('/subscribe', async (req, res) => {
   }
 })
 
-router.post('/send', async (req, res) => {
-  const { message, district, upazila, phones } = req.body ?? {}
+router.post('/send', async (req, res, next) => {
+  try {
+    const { message, district, severity, title, upazila, phones } = req.body ?? {}
 
-  if (typeof message !== 'string' || !message.trim()) {
-    return res.status(400).json({ error: 'message is required.' })
-  }
-  const body = message.trim().slice(0, 480)
+    if (typeof message !== 'string' || !message.trim()) {
+      return res.status(400).json({ error: 'message is required.' })
+    }
+    const body = message.trim().slice(0, 480)
+    const alertSeverity = ALERT_SEVERITIES.includes(severity) ? severity : 'Medium'
+    const targetDistrict =
+      typeof district === 'string' && district.trim()
+        ? await District.findOne({ where: { name: district.trim() } })
+        : null
 
-  let targets
-  if (Array.isArray(phones) && phones.length > 0) {
-    targets = phones
-      .map(normalisePhone)
-      .filter((value) => value && phonePattern.test(value))
-      .map((phone) => ({ phone }))
-  } else {
-    targets = await listSubscribers({
-      district: typeof district === 'string' ? district.trim() || undefined : undefined,
-      upazila: typeof upazila === 'string' ? upazila.trim() || undefined : undefined,
+    const alert = await Alert.create({
+      title:
+        typeof title === 'string' && title.trim()
+          ? title.trim().slice(0, 180)
+          : `${alertSeverity} flood alert${targetDistrict ? ` - ${targetDistrict.name}` : ''}`,
+      message: body,
+      severity: alertSeverity,
+      districtId: targetDistrict?.id || null,
+      issuedById: null,
     })
+    emitAlert(req, alert, targetDistrict)
+
+    let targets
+    if (Array.isArray(phones) && phones.length > 0) {
+      targets = phones
+        .map(normalisePhone)
+        .filter((value) => value && phonePattern.test(value))
+        .map((phone) => ({ phone }))
+    } else {
+      targets = await listSubscribers({
+        district: typeof district === 'string' ? district.trim() || undefined : undefined,
+        upazila: typeof upazila === 'string' ? upazila.trim() || undefined : undefined,
+      })
+    }
+
+    if (targets.length === 0) {
+      return res.status(201).json({
+        ok: true,
+        alert,
+        sent: 0,
+        failed: 0,
+        total: 0,
+        results: [],
+        warning: 'Alert saved, but no subscribers match the filters.',
+      })
+    }
+
+    const results = await Promise.all(
+      targets.map(async (target) => {
+        try {
+          const result = await sendSms({ phone: target.phone, message: body })
+          return { phone: target.phone, status: 'sent', ...result }
+        } catch (error) {
+          return { phone: target.phone, status: 'failed', error: error.message }
+        }
+      }),
+    )
+
+    const sent = results.filter((r) => r.status === 'sent').length
+    return res.json({
+      ok: sent > 0,
+      alert,
+      sent,
+      failed: results.length - sent,
+      total: results.length,
+      results,
+    })
+  } catch (error) {
+    return next(error)
   }
-
-  if (targets.length === 0) {
-    return res.status(404).json({ error: 'No subscribers match the filters.' })
-  }
-
-  const results = await Promise.all(
-    targets.map(async (target) => {
-      try {
-        const result = await sendSms({ phone: target.phone, message: body })
-        return { phone: target.phone, status: 'sent', ...result }
-      } catch (error) {
-        return { phone: target.phone, status: 'failed', error: error.message }
-      }
-    }),
-  )
-
-  const sent = results.filter((r) => r.status === 'sent').length
-  return res.json({
-    ok: sent > 0,
-    sent,
-    failed: results.length - sent,
-    total: results.length,
-    results,
-  })
 })
 
 router.get('/subscribers', async (req, res) => {

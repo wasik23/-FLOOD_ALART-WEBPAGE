@@ -1,28 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ROLE_HOME_PATHS, ROLE_OPTIONS } from '../auth/roles.js'
 import { useAuth } from '../auth/useAuth.js'
 import useSocket from '../hooks/useSocket.js'
-
-const initialAlerts = [
-  {
-    id: 'alert-seed-sylhet',
-    district: 'Sylhet',
-    message: 'Standing water reported near Kanaighat relief route.',
-    severity: 'High',
-    timestamp: new Date().toISOString(),
-    title: 'Field alert',
-  },
-  {
-    id: 'alert-seed-gaibandha',
-    district: 'Gaibandha',
-    message: 'Dry food stock is below 30% at Fulchhari shelter.',
-    severity: 'Medium',
-    timestamp: new Date().toISOString(),
-    title: 'Supply watch',
-  },
-]
 
 const initialTasks = [
   {
@@ -55,27 +36,66 @@ const severityStyles = {
   Low: 'bg-green-100 text-green-800',
 }
 
+function normalizeAlert(alert) {
+  const id = String(alert.id || Date.now())
+
+  return {
+    id: id.startsWith('alert-') ? id : `alert-${id}`,
+    district: alert.district?.name || alert.district || 'Bangladesh',
+    message: alert.message || 'New field alert received.',
+    severity: alert.severity || 'Medium',
+    timestamp: alert.issuedAt || alert.timestamp || new Date().toISOString(),
+    title: alert.title || 'Relief alert',
+  }
+}
+
 function Dashboard() {
   const { t } = useTranslation()
   const { user } = useAuth()
-  const [alerts, setAlerts] = useState(initialAlerts)
+  const [alerts, setAlerts] = useState([])
+  const [alertStatus, setAlertStatus] = useState('Loading alerts')
   const [tasks, setTasks] = useState(initialTasks)
   const roleLabel = t(`roles.${user.role}`)
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    async function loadAlerts() {
+      try {
+        const response = await fetch('/api/alerts?activeOnly=true&limit=6', {
+          signal: controller.signal,
+        })
+
+        if (!response.ok) {
+          throw new Error('Could not load server alerts.')
+        }
+
+        const payload = await response.json()
+        const serverAlerts = (payload.alerts || []).map(normalizeAlert)
+        setAlerts(serverAlerts)
+        setAlertStatus(
+          serverAlerts.length ? 'Server alerts loaded' : 'No database alerts yet',
+        )
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          setAlertStatus(error.message)
+        }
+      }
+    }
+
+    loadAlerts()
+
+    return () => controller.abort()
+  }, [])
 
   const socketHandlers = useMemo(
     () => ({
       new_alert: (alert) => {
         setAlerts((current) => [
-          {
-            id: alert.id || `alert-${Date.now()}`,
-            district: alert.district || 'Bangladesh',
-            message: alert.message || 'New field alert received.',
-            severity: alert.severity || 'Medium',
-            timestamp: alert.timestamp || new Date().toISOString(),
-            title: alert.title || 'Relief alert',
-          },
+          normalizeAlert(alert),
           ...current,
         ].slice(0, 6))
+        setAlertStatus('Realtime server alert received')
       },
       volunteer_accepted_task: (taskUpdate) => {
         setTasks((current) => {
@@ -182,6 +202,9 @@ function Dashboard() {
               {t('dashboard.alertCount', { count: alerts.length })}
             </span>
           </div>
+          <p className="mt-2 text-sm font-semibold text-slate-500">
+            {alertStatus}
+          </p>
 
           <div className="mt-5 grid gap-3">
             {alerts.map((alert) => (
@@ -210,6 +233,11 @@ function Dashboard() {
                 </p>
               </article>
             ))}
+            {alerts.length === 0 ? (
+              <div className="rounded-md border border-primary-100 bg-slate-50 p-4 text-sm font-semibold text-slate-600">
+                No alerts found in the server database.
+              </div>
+            ) : null}
           </div>
         </section>
 
