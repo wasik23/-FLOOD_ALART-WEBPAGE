@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="bn">
+  <head>
+    <meta charset="utf-8" />
+    <title>ReliefOps ব্যবহার নির্দেশিকা</title>
+    <style>
+      @page {
+        margin: 18mm;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        color: #132f2a;
+        font-family: "Nirmala UI", "Segoe UI", Arial, sans-serif;
+        font-size: 14px;
+        line-height: 1.55;
+        margin: 0;
+      }
+
+      h1 {
+        color: #006a4e;
+        font-size: 30px;
+        margin: 0 0 8px;
+      }
+
+      h2 {
+        border-bottom: 1px solid #b7e4d7;
+        color: #075985;
+        font-size: 18px;
+        margin: 24px 0 8px;
+        padding-bottom: 4px;
+      }
+
+      h3 {
+        color: #0f766e;
+        font-size: 15px;
+        margin: 14px 0 4px;
+      }
+
+      p {
+        margin: 6px 0;
+      }
+
+      ul,
+      ol {
+        margin: 6px 0 10px 22px;
+        padding: 0;
+      }
+
+      li {
+        margin: 4px 0;
+      }
+
+      code {
+        background: #eef8f5;
+        border: 1px solid #ccebe3;
+        border-radius: 4px;
+        color: #064e3b;
+        font-family: Consolas, monospace;
+        padding: 1px 5px;
+      }
+
+      .cover {
+        border: 2px solid #8dd6c6;
+        border-radius: 10px;
+        margin-bottom: 18px;
+        padding: 22px;
+      }
+
+      .muted {
+        color: #546b66;
+      }
+
+      .grid {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .card {
+        background: #f7fbf9;
+        border: 1px solid #ccebe3;
+        border-radius: 8px;
+        padding: 10px;
+      }
+
+      .page-break {
+        break-before: page;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="cover">
+      <h1>ReliefOps ব্যবহার নির্দেশিকা</h1>
+      <p class="muted">Flood Early Warning and Relief Support Platform</p>
+      <p>
+        এই ম্যানুয়ালটি প্রেজেন্টেশনের জন্য ছোট ও সহজ ভাষায় লেখা। এখানে
+        রিপো ক্লোন করা থেকে শুরু করে সব প্রধান ফিচার দেখানোর ধাপ আছে।
+      </p>
+    </section>
+
+    <h2>১. প্রজেক্ট ক্লোন</h2>
+    <ol>
+      <li>GitHub রিপো খুলুন।</li>
+      <li>টার্মিনালে চালান:</li>
+    </ol>
+    <p><code>git clone https://github.com/wasik23/-FLOOD_ALART-WEBPAGE.git</code></p>
+    <p><code>cd -FLOOD_ALART-WEBPAGE</code></p>
+
+    <h2>২. ইনস্টল ও রান</h2>
+    <ol>
+      <li>প্যাকেজ ইনস্টল করুন: <code>npm install</code></li>
+      <li>ব্যাকএন্ড চালু করুন: <code>npm run server</code></li>
+      <li>নতুন টার্মিনালে ফ্রন্টএন্ড চালু করুন: <code>npm run dev</code></li>
+      <li>ব্রাউজারে খুলুন: <code>http://localhost:5173</code></li>
+    </ol>
+    <p class="muted">
+      লাইভ ডাটা, SMS API, শেল্টার API এবং ডাটাবেস ফিচারের জন্য সার্ভার চালু থাকা দরকার।
+    </p>
+
+    <h2>৩. ডাটাবেস সেটআপ</h2>
+    <ol>
+      <li>MySQL চালু করুন।</li>
+      <li><code>server/.env.example</code> কপি করে <code>server/.env</code> বানান।</li>
+      <li>DB নাম, ইউজার ও পাসওয়ার্ড ঠিক করুন।</li>
+      <li>ডাটাবেস তৈরি করুন: <code>CREATE DATABASE reliefops;</code></li>
+      <li>সিড ডাটা দিন: <code>cd server</code> তারপর <code>npm run db:seed</code></li>
+    </ol>
+
+    <h2>৪. লগইন পথ</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Volunteer</h3>
+        <p>Register: <code>/register</code></p>
+        <p>Login: <code>/login</code></p>
+      </div>
+      <div class="card">
+        <h3>NGO/Coordinator</h3>
+        <p>Login: <code>/ngo</code></p>
+        <p>Demo: <code>coordinator@example.com</code></p>
+      </div>
+      <div class="card">
+        <h3>Admin</h3>
+        <p>Login: <code>/admin</code></p>
+        <p>Dashboard: <code>/admin/dashboard</code></p>
+      </div>
+      <div class="card">
+        <h3>Demo Password</h3>
+        <p><code>password</code></p>
+      </div>
+    </div>
+
+    <h2 class="page-break">৫. পাবলিক ফিচার</h2>
+    <ul>
+      <li><strong>Home:</strong> বন্যা তথ্য, FFWC পানি লেভেল, খবর, যোগাযোগ।</li>
+      <li><strong>Live Map:</strong> ঝুঁকি এলাকা, FFWC স্টেশন, help request, shelter, NGO, volunteer marker।</li>
+      <li><strong>Request Help:</strong> কোনো অ্যাকাউন্ট ছাড়াই সাহায্য চাওয়া যায়।</li>
+      <li><strong>SMS Alerts:</strong> মোবাইল নম্বর দিয়ে জেলা/উপজেলা ভিত্তিক সতর্কতা সাবস্ক্রাইব।</li>
+      <li><strong>Donate:</strong> যাচাইকৃত donation account দেখা যায়।</li>
+    </ul>
+
+    <h2>৬. ম্যাপ ডেমো</h2>
+    <ul>
+      <li>রঙিন জেলা = flood risk level।</li>
+      <li>লাল/নীল/সবুজ circle = FFWC water station।</li>
+      <li><code>H</code> = Help request location।</li>
+      <li>Home icon = Safe shelter।</li>
+      <li><code>N</code> = NGO team location।</li>
+      <li><code>V</code> = Volunteer location।</li>
+      <li>যেকোনো marker ক্লিক করলে বিস্তারিত দেখা যায়।</li>
+    </ul>
+
+    <h2>৭. Volunteer ফিচার</h2>
+    <ul>
+      <li>Volunteer home page থেকে registration করতে পারে।</li>
+      <li>Profile image, phone, guardian phone, address দিতে হয়।</li>
+      <li>Login করার পর availability, skills, task progress আপডেট করতে পারে।</li>
+      <li>Field report দিলে coordinator তা দেখতে পারে।</li>
+    </ul>
+
+    <h2>৮. NGO/Coordinator ফিচার</h2>
+    <ul>
+      <li><code>/ngo</code> থেকে login।</li>
+      <li>Public help request review করা যায়।</li>
+      <li>Available volunteer assign করা যায়।</li>
+      <li>Volunteer field update দেখা যায়।</li>
+      <li>Records ও situation report page ব্যবহার করা যায়।</li>
+    </ul>
+
+    <h2>৯. Admin ফিচার</h2>
+    <ul>
+      <li><code>/admin</code> থেকে login।</li>
+      <li>Dashboard: system health, database, FFWC status দেখা যায়।</li>
+      <li>NGO account create, edit, verify, ban, delete করা যায়।</li>
+      <li>District risk update করা যায়।</li>
+      <li>Broadcast alert দিলে alert database-এ save হয় এবং SMS send হয়।</li>
+      <li>Admin dashboard path: <code>/admin/dashboard</code></li>
+    </ul>
+
+    <h2>১০. Real Data কোথায়</h2>
+    <ul>
+      <li>FFWC water level: external live API + server proxy।</li>
+      <li>Alerts: database-backed server API।</li>
+      <li>Shelters map: server API first, fallback demo data।</li>
+      <li>SMS subscriber: server file storage এখনো ব্যবহার করে।</li>
+      <li>Help request ও volunteer profile: এখনো local/demo storage; future database migration দরকার।</li>
+    </ul>
+
+    <h2>১১. প্রেজেন্টেশন ডেমো অর্ডার</h2>
+    <ol>
+      <li>Home page দেখান।</li>
+      <li>Live Map খুলে marker explain করুন।</li>
+      <li>Request Help form submit করুন।</li>
+      <li>SMS Alert subscription দেখান।</li>
+      <li>Volunteer register/login দেখান।</li>
+      <li>NGO login করে request assignment দেখান।</li>
+      <li>Admin login করে broadcast alert দেখান।</li>
+    </ol>
+
+    <h2>১২. গুরুত্বপূর্ণ কমান্ড</h2>
+    <ul>
+      <li><code>npm run dev</code> = frontend run</li>
+      <li><code>npm run server</code> = backend run</li>
+      <li><code>npm run build</code> = production build test</li>
+      <li><code>npm run lint</code> = code quality check</li>
+    </ul>
+  </body>
+</html>
