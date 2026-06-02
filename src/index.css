@@ -34,6 +34,53 @@ body {
   width: 100%;
 }
 
+.map-letter-icon {
+  background: transparent;
+  border: 0;
+}
+
+.map-letter-icon__badge {
+  align-items: center;
+  border: 2px solid #ffffff;
+  border-radius: 9999px;
+  box-shadow: 0 8px 18px rgb(15 23 42 / 0.28);
+  color: #ffffff;
+  display: inline-flex;
+  font-size: 14px;
+  font-weight: 900;
+  height: 30px;
+  justify-content: center;
+  line-height: 1;
+  width: 30px;
+}
+
+.shelter-map-icon {
+  background: transparent;
+  border: 0;
+}
+
+.shelter-map-icon__badge {
+  align-items: center;
+  border: 2px solid #ffffff;
+  border-radius: 9999px;
+  box-shadow: 0 8px 18px rgb(15 23 42 / 0.28);
+  color: #ffffff;
+  display: inline-flex;
+  height: 36px;
+  justify-content: center;
+  width: 36px;
+}
+
+.shelter-map-icon__badge svg {
+  fill: none;
+  height: 22px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.4;
+  width: 22px;
+}
+
 @layer components {
   .page-shell {
     @apply mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8;

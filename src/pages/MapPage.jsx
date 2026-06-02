@@ -1,21 +1,28 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import L from 'leaflet'
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   getDistrictFloodRisk,
   getDistrictName,
   riskLevels,
 } from '../utils/floodRisk.js'
-import { getHelpRequests } from '../data/reliefData.js'
+import { getHelpRequests, getVolunteerProfiles } from '../data/reliefData.js'
 import useSocket from '../hooks/useSocket.js'
+import { initialShelters } from '../data/shelters.js'
 import { getLiveWaterLevels } from '../services/ffwc.js'
 import { createBangladeshMap } from '../utils/map.js'
 import { cacheDistrictRiskSnapshot } from '../utils/offlineRiskSnapshot.js'
+import BrandHeader from '../components/BrandHeader.jsx'
+import SiteFooter from '../components/SiteFooter.jsx'
 
 const layerControls = [
   { key: 'risk', label: 'Flood risk' },
   { key: 'stations', label: 'FFWC stations' },
   { key: 'requests', label: 'Help requests' },
+  { key: 'shelters', label: 'Safe shelters' },
+  { key: 'ngos', label: 'NGO teams' },
+  { key: 'volunteers', label: 'Volunteers' },
 ]
 
 const requestStatusStyles = {
@@ -23,6 +30,71 @@ const requestStatusStyles = {
   Assigned: '#2563EB',
   Completed: '#16A34A',
 }
+
+const shelterStatusColors = {
+  Open: '#059669',
+  Full: '#F59E0B',
+  Closed: '#64748B',
+}
+
+const markerColors = {
+  ngo: '#7C3AED',
+  volunteer: '#2563EB',
+}
+
+const defaultNgoLocations = [
+  {
+    id: 'ngo-sylhet',
+    name: 'Sylhet NGO Coordination Desk',
+    district: 'Sylhet',
+    contact: '+8801711-001001',
+    latitude: 24.9017,
+    longitude: 91.8756,
+  },
+  {
+    id: 'ngo-gaibandha',
+    name: 'Gaibandha Field Coordination Desk',
+    district: 'Gaibandha',
+    contact: '+8801611-001004',
+    latitude: 25.3341,
+    longitude: 89.5486,
+  },
+  {
+    id: 'ngo-jamalpur',
+    name: 'Jamalpur Relief Coordination Desk',
+    district: 'Jamalpur',
+    contact: '+8801811-001002',
+    latitude: 24.9433,
+    longitude: 90.0062,
+  },
+]
+
+const defaultVolunteerLocations = [
+  {
+    id: 'volunteer-sylhet',
+    name: 'Boat rescue team',
+    district: 'Sylhet',
+    availability: 'Available',
+    latitude: 24.8892,
+    longitude: 91.8618,
+  },
+  {
+    id: 'volunteer-sunamganj',
+    name: 'Medical triage volunteers',
+    district: 'Sunamganj',
+    availability: 'Available',
+    latitude: 24.9368,
+    longitude: 91.3867,
+  },
+  {
+    id: 'volunteer-kurigram',
+    name: 'Dry food delivery team',
+    district: 'Kurigram',
+    availability: 'Busy',
+    latitude: 25.8108,
+    longitude: 89.6419,
+  },
+]
 
 function getStationColor(risk) {
   return riskLevels[risk]?.color || '#2563EB'
@@ -32,6 +104,90 @@ function getRequestColor(status) {
   return requestStatusStyles[status] || '#7C3AED'
 }
 
+function createLetterIcon(label, color) {
+  return L.divIcon({
+    className: 'map-letter-icon',
+    html: `<span class="map-letter-icon__badge" style="background:${color}">${label}</span>`,
+    iconAnchor: [15, 15],
+    iconSize: [30, 30],
+    popupAnchor: [0, -15],
+  })
+}
+
+function createShelterIcon(status) {
+  const color = shelterStatusColors[status] || shelterStatusColors.Open
+
+  return L.divIcon({
+    className: 'shelter-map-icon',
+    html: `
+      <span class="shelter-map-icon__badge" style="background:${color}">
+        <svg aria-hidden="true" viewBox="0 0 24 24">
+          <path d="M3 10.8 12 3l9 7.8" />
+          <path d="M5 10v10h14V10" />
+          <path d="M9 20v-6h6v6" />
+        </svg>
+      </span>
+    `,
+    iconAnchor: [18, 18],
+    iconSize: [36, 36],
+    popupAnchor: [0, -18],
+  })
+}
+
+function getShelterStatus(shelter) {
+  if (shelter.status) return shelter.status
+  if (shelter.isActive === false) return 'Closed'
+
+  const occupancy = shelter.occupied ?? shelter.occupancy ?? 0
+  const capacity = shelter.capacity ?? 0
+  return capacity > 0 && occupancy >= capacity ? 'Full' : 'Open'
+}
+
+function normalizeShelter(shelter) {
+  const districtName = shelter.district?.name || shelter.district || 'Bangladesh'
+  const occupancy = Number(shelter.occupied ?? shelter.occupancy ?? 0)
+  const capacity = Number(shelter.capacity ?? 0)
+
+  return {
+    id: shelter.id,
+    name: shelter.name,
+    address: shelter.address || [shelter.upazila, districtName].filter(Boolean).join(', '),
+    district: districtName,
+    latitude: Number(shelter.latitude),
+    longitude: Number(shelter.longitude),
+    occupied: Number.isFinite(occupancy) ? occupancy : 0,
+    capacity: Number.isFinite(capacity) ? capacity : 0,
+    resources: shelter.resources || [],
+    contact: shelter.contact || '',
+    status: getShelterStatus(shelter),
+  }
+}
+
+function createProfileVolunteerLocations(profiles, districtCenters) {
+  return profiles
+    .map((profile, index) => {
+      const location = profile.location || profile.district || ''
+      const districtName = Object.keys(districtCenters).find((name) =>
+        location.toLowerCase().includes(name),
+      )
+      const center = districtName ? districtCenters[districtName] : null
+
+      if (!center) return null
+
+      return {
+        id: `profile-volunteer-${profile.userId || index}`,
+        name: profile.name || 'Registered volunteer',
+        district: districtName.replace(/\b\w/g, (character) =>
+          character.toUpperCase(),
+        ),
+        availability: profile.availability || 'Available',
+        latitude: center.lat + 0.018 + index * 0.004,
+        longitude: center.lng - 0.018 - index * 0.004,
+      }
+    })
+    .filter(Boolean)
+}
+
 function MapPage() {
   const { i18n, t } = useTranslation()
   const mapNodeRef = useRef(null)
@@ -39,6 +195,9 @@ function MapPage() {
   const geoJsonLayerRef = useRef(null)
   const ffwcLayerRef = useRef(null)
   const requestLayerRef = useRef(null)
+  const shelterLayerRef = useRef(null)
+  const ngoLayerRef = useRef(null)
+  const volunteerLayerRef = useRef(null)
   const selectedLayerRef = useRef(null)
   const districtLayersByNameRef = useRef({})
   const districtCentersRef = useRef({})
@@ -54,10 +213,17 @@ function MapPage() {
   const [liveWaterStations, setLiveWaterStations] = useState([])
   const [waterStationStatus, setWaterStationStatus] = useState('Loading stations')
   const [helpRequests, setHelpRequests] = useState(() => getHelpRequests())
+  const [shelters, setShelters] = useState(() => initialShelters.map(normalizeShelter))
+  const [shelterStatus, setShelterStatus] = useState('Loading shelters')
+  const [selectedShelter, setSelectedShelter] = useState(null)
+  const [selectedResponseLocation, setSelectedResponseLocation] = useState(null)
   const [visibleLayers, setVisibleLayers] = useState({
+    ngos: true,
     requests: true,
     risk: true,
+    shelters: true,
     stations: true,
+    volunteers: true,
   })
 
   useEffect(() => {
@@ -200,6 +366,8 @@ function MapPage() {
     })
     setSelectedDistrict(currentRisk)
     setSelectedStation(null)
+    setSelectedShelter(null)
+    setSelectedResponseLocation(null)
     setLatestWaterUpdate(
       waterLevelUpdatesRef.current[currentRisk.districtName.toLowerCase()] ||
         null,
@@ -322,6 +490,9 @@ function MapPage() {
       geoJsonLayerRef.current = null
       ffwcLayerRef.current = null
       requestLayerRef.current = null
+      shelterLayerRef.current = null
+      ngoLayerRef.current = null
+      volunteerLayerRef.current = null
       selectedLayerRef.current = null
       districtLayersByNameRef.current = {}
       districtCentersRef.current = {}
@@ -379,6 +550,49 @@ function MapPage() {
   }, [])
 
   useEffect(() => {
+    const controller = new AbortController()
+
+    async function loadShelters() {
+      try {
+        const response = await fetch('/api/shelters?active=true', {
+          signal: controller.signal,
+        })
+
+        if (!response.ok) {
+          throw new Error('Backend shelters unavailable')
+        }
+
+        const data = await response.json()
+        const nextShelters = (data.shelters || [])
+          .map(normalizeShelter)
+          .filter(
+            (shelter) =>
+              Number.isFinite(shelter.latitude) &&
+              Number.isFinite(shelter.longitude),
+          )
+
+        if (nextShelters.length) {
+          setShelters(nextShelters)
+          setShelterStatus(`${nextShelters.length} mapped shelters`)
+          return
+        }
+
+        throw new Error('No mapped backend shelters')
+      } catch (error) {
+        if (controller.signal.aborted) return
+
+        const fallbackShelters = initialShelters.map(normalizeShelter)
+        setShelters(fallbackShelters)
+        setShelterStatus(`${fallbackShelters.length} demo shelters`)
+      }
+    }
+
+    loadShelters()
+
+    return () => controller.abort()
+  }, [])
+
+  useEffect(() => {
     if (!mapRef.current) return
 
     if (ffwcLayerRef.current) {
@@ -389,7 +603,7 @@ function MapPage() {
     if (!visibleLayers.stations) return
 
     const markers = liveWaterStations.map((station) => {
-      const marker = L.circleMarker([station.latitude, station.longitude], {
+        const marker = L.circleMarker([station.latitude, station.longitude], {
         color: '#ffffff',
         fillColor: getStationColor(station.risk),
         fillOpacity: 0.92,
@@ -442,12 +656,8 @@ function MapPage() {
           (request) => request.status !== 'Completed',
         ).length
         const status = pendingCount ? 'Pending' : 'Completed'
-        const marker = L.circleMarker(center, {
-          color: '#ffffff',
-          fillColor: getRequestColor(status),
-          fillOpacity: 0.9,
-          radius: Math.min(18, 7 + requests.length * 2),
-          weight: 2,
+        const marker = L.marker(center, {
+          icon: createLetterIcon('H', getRequestColor(status)),
         })
 
         marker.bindPopup(`
@@ -463,8 +673,149 @@ function MapPage() {
     requestLayerRef.current = L.layerGroup(markers).addTo(mapRef.current)
   }, [helpRequests, visibleLayers.requests])
 
+  useEffect(() => {
+    if (!mapRef.current) return
+
+    if (ngoLayerRef.current) {
+      ngoLayerRef.current.remove()
+      ngoLayerRef.current = null
+    }
+
+    if (!visibleLayers.ngos) return
+
+    const markers = defaultNgoLocations.map((ngo) => {
+      const marker = L.marker([ngo.latitude, ngo.longitude], {
+        icon: createLetterIcon('N', markerColors.ngo),
+      })
+
+      marker.bindPopup(`
+        <strong>${ngo.name}</strong><br/>
+        ${ngo.district}<br/>
+        Contact: ${ngo.contact}
+      `)
+      marker.on('click', () => {
+        setSelectedResponseLocation({
+          ...ngo,
+          label: 'Selected NGO team',
+          type: 'NGO',
+        })
+        setSelectedShelter(null)
+        setSelectedStation(null)
+      })
+
+      return marker
+    })
+
+    ngoLayerRef.current = L.layerGroup(markers).addTo(mapRef.current)
+  }, [visibleLayers.ngos])
+
+  useEffect(() => {
+    if (!mapRef.current) return
+
+    if (volunteerLayerRef.current) {
+      volunteerLayerRef.current.remove()
+      volunteerLayerRef.current = null
+    }
+
+    if (!visibleLayers.volunteers) return
+
+    const profileLocations = createProfileVolunteerLocations(
+      getVolunteerProfiles(),
+      districtCentersRef.current,
+    )
+    const volunteerLocations = [...defaultVolunteerLocations, ...profileLocations]
+
+    const markers = volunteerLocations.map((volunteer) => {
+      const marker = L.marker([volunteer.latitude, volunteer.longitude], {
+        icon: createLetterIcon('V', markerColors.volunteer),
+      })
+
+      marker.bindPopup(`
+        <strong>${volunteer.name}</strong><br/>
+        ${volunteer.district}<br/>
+        Status: ${volunteer.availability}
+      `)
+      marker.on('click', () => {
+        setSelectedResponseLocation({
+          ...volunteer,
+          label: 'Selected volunteer location',
+          type: 'Volunteer',
+        })
+        setSelectedShelter(null)
+        setSelectedStation(null)
+      })
+
+      return marker
+    })
+
+    volunteerLayerRef.current = L.layerGroup(markers).addTo(mapRef.current)
+  }, [districtCount, visibleLayers.volunteers])
+
+  useEffect(() => {
+    if (!mapRef.current) return
+
+    if (shelterLayerRef.current) {
+      shelterLayerRef.current.remove()
+      shelterLayerRef.current = null
+    }
+
+    if (!visibleLayers.shelters) return
+
+    const markers = shelters
+      .filter(
+        (shelter) =>
+          Number.isFinite(shelter.latitude) &&
+          Number.isFinite(shelter.longitude),
+      )
+      .map((shelter) => {
+        const availableBeds = Math.max(shelter.capacity - shelter.occupied, 0)
+        const marker = L.marker([shelter.latitude, shelter.longitude], {
+          icon: createShelterIcon(shelter.status),
+        })
+
+        marker.bindPopup(`
+          <strong>${shelter.name}</strong><br/>
+          ${shelter.address || shelter.district}<br/>
+          Status: ${shelter.status}<br/>
+          Capacity: ${shelter.occupied}/${shelter.capacity}<br/>
+          Available: ${availableBeds}
+        `)
+        marker.on('click', () => {
+          setSelectedShelter(shelter)
+          setSelectedStation(null)
+        })
+
+        return marker
+      })
+
+    shelterLayerRef.current = L.layerGroup(markers).addTo(mapRef.current)
+  }, [shelters, visibleLayers.shelters])
+
   return (
-    <section className="page-shell">
+    <>
+      <BrandHeader>
+        <Link className="rounded-md px-3 py-2 text-white/90 hover:bg-white/10" to="/">
+          Home
+        </Link>
+        <Link className="rounded-md bg-white px-3 py-2 text-sky-800" to="/map">
+          Map
+        </Link>
+        <Link className="rounded-md px-3 py-2 text-white/90 hover:bg-white/10" to="/alerts">
+          SMS alerts
+        </Link>
+        <Link className="rounded-md px-3 py-2 text-white/90 hover:bg-white/10" to="/request-help">
+          Request help
+        </Link>
+        <Link className="rounded-md px-3 py-2 text-white/90 hover:bg-white/10" to="/donate">
+          Donate
+        </Link>
+        <Link className="rounded-md px-3 py-2 text-white/90 hover:bg-white/10" to="/shelters">
+          Shelters
+        </Link>
+      </BrandHeader>
+
+      <main>
+        <section className="page-shell">
       <div className="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
         <div>
           <p className="text-sm font-semibold uppercase tracking-wide text-primary">
@@ -562,8 +913,38 @@ function MapPage() {
               ) : null}
               {visibleLayers.requests ? (
                 <div className="flex items-center gap-2">
-                  <span className="h-3 w-3 rounded-full bg-amber-500" />
+                  <span className="grid h-5 w-5 place-items-center rounded-full bg-amber-500 text-xs font-black text-white">
+                    H
+                  </span>
                   <span className="text-slate-700">Help request</span>
+                </div>
+              ) : null}
+              {visibleLayers.shelters ? (
+                <div className="flex items-center gap-2">
+                  <span className="grid h-5 w-5 place-items-center rounded-full bg-emerald-600 text-white">
+                    <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
+                      <path d="M3 10.8 12 3l9 7.8" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" />
+                      <path d="M5 10v10h14V10" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" />
+                      <path d="M9 20v-6h6v6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" />
+                    </svg>
+                  </span>
+                  <span className="text-slate-700">Safe shelter</span>
+                </div>
+              ) : null}
+              {visibleLayers.ngos ? (
+                <div className="flex items-center gap-2">
+                  <span className="grid h-5 w-5 place-items-center rounded-full bg-violet-600 text-xs font-black text-white">
+                    N
+                  </span>
+                  <span className="text-slate-700">NGO team</span>
+                </div>
+              ) : null}
+              {visibleLayers.volunteers ? (
+                <div className="flex items-center gap-2">
+                  <span className="grid h-5 w-5 place-items-center rounded-full bg-blue-600 text-xs font-black text-white">
+                    V
+                  </span>
+                  <span className="text-slate-700">Volunteer</span>
                 </div>
               ) : null}
             </div>
@@ -604,6 +985,14 @@ function MapPage() {
                   </dt>
                   <dd className="mt-1 text-sm font-semibold text-slate-950">
                     {waterStationStatus}
+                  </dd>
+                </div>
+                <div className="rounded-md bg-slate-50 p-4">
+                  <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Safe shelters
+                  </dt>
+                  <dd className="mt-1 text-sm font-semibold text-slate-950">
+                    {shelterStatus}
                   </dd>
                 </div>
                 <div className="rounded-md bg-slate-50 p-4">
@@ -656,6 +1045,53 @@ function MapPage() {
                     </dd>
                   </div>
                 ) : null}
+                {selectedShelter ? (
+                  <div className="rounded-md bg-emerald-50 p-4">
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                      Selected safe shelter
+                    </dt>
+                    <dd className="mt-2 text-sm font-semibold text-emerald-950">
+                      <span className="block text-base font-black">
+                        {selectedShelter.name}
+                      </span>
+                      <span className="mt-1 block">
+                        {selectedShelter.address || selectedShelter.district}
+                      </span>
+                      <span className="mt-2 block">
+                        {selectedShelter.status} |{' '}
+                        {Math.max(
+                          selectedShelter.capacity - selectedShelter.occupied,
+                          0,
+                        )}{' '}
+                        places available
+                      </span>
+                      <span className="mt-1 block">
+                        Capacity {selectedShelter.occupied}/
+                        {selectedShelter.capacity}
+                      </span>
+                    </dd>
+                  </div>
+                ) : null}
+                {selectedResponseLocation ? (
+                  <div className="rounded-md bg-violet-50 p-4">
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-violet-700">
+                      {selectedResponseLocation.label}
+                    </dt>
+                    <dd className="mt-2 text-sm font-semibold text-violet-950">
+                      <span className="block text-base font-black">
+                        {selectedResponseLocation.name}
+                      </span>
+                      <span className="mt-1 block">
+                        {selectedResponseLocation.district}
+                      </span>
+                      <span className="mt-2 block">
+                        {selectedResponseLocation.contact
+                          ? `Contact ${selectedResponseLocation.contact}`
+                          : `Status ${selectedResponseLocation.availability}`}
+                      </span>
+                    </dd>
+                  </div>
+                ) : null}
               </dl>
 
               <p className="mt-6 text-sm leading-6 text-slate-600">
@@ -669,7 +1105,10 @@ function MapPage() {
           )}
         </aside>
       </div>
-    </section>
+        </section>
+      </main>
+      <SiteFooter />
+    </>
   )
 }
 

@@ -3,75 +3,7 @@ import PropTypes from 'prop-types'
 import { useTranslation } from 'react-i18next'
 import { ROLES } from '../auth/roles.js'
 import { useAuth } from '../auth/useAuth.js'
-
-const initialShelters = [
-  {
-    id: 'shelter-gaibandha-school',
-    name: 'Fulchhari High School Shelter',
-    upazila: 'Fulchhari',
-    district: 'Gaibandha',
-    occupied: 142,
-    capacity: 180,
-    resources: ['food', 'water', 'medical'],
-    contact: '+8801712-445566',
-    status: 'Open',
-  },
-  {
-    id: 'shelter-sylhet-college',
-    name: 'Kanaighat Degree College Camp',
-    upazila: 'Kanaighat',
-    district: 'Sylhet',
-    occupied: 96,
-    capacity: 100,
-    resources: ['food', 'water'],
-    contact: '+8801811-223344',
-    status: 'Full',
-  },
-  {
-    id: 'shelter-sunamganj-union',
-    name: 'Derai Union Parishad Safe Center',
-    upazila: 'Derai',
-    district: 'Sunamganj',
-    occupied: 64,
-    capacity: 150,
-    resources: ['water', 'medical'],
-    contact: '+8801915-667788',
-    status: 'Open',
-  },
-  {
-    id: 'shelter-kurigram-madrasa',
-    name: 'Chilmari Madrasa Shelter',
-    upazila: 'Chilmari',
-    district: 'Kurigram',
-    occupied: 0,
-    capacity: 120,
-    resources: ['food'],
-    contact: '+8801744-908070',
-    status: 'Closed',
-  },
-  {
-    id: 'shelter-jamalpur-primary',
-    name: 'Dewanganj Primary Relief Point',
-    upazila: 'Dewanganj',
-    district: 'Jamalpur',
-    occupied: 78,
-    capacity: 140,
-    resources: ['food', 'water', 'medical'],
-    contact: '+8801630-112233',
-    status: 'Open',
-  },
-  {
-    id: 'shelter-bogra-community',
-    name: 'Sariakandi Community Hall',
-    upazila: 'Sariakandi',
-    district: 'Bogura',
-    occupied: 110,
-    capacity: 110,
-    resources: ['water'],
-    contact: '+8801555-443322',
-    status: 'Full',
-  },
-]
+import { initialShelters } from '../data/shelters.js'
 
 const statusStyles = {
   Open: 'bg-emerald-100 text-emerald-800',
