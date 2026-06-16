@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 :root {
-  color: #15372e;
-  background: #f7fbf9;
+  color: #e5e7eb;
+  background: #080d0d;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
     'Segoe UI', sans-serif;
 
@@ -23,6 +23,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background: #080d0d;
 }
 
 #root {
@@ -83,38 +84,327 @@ body {
 
 @layer components {
   .page-shell {
-    @apply mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8;
+    @apply mx-auto w-full max-w-6xl px-4 py-8 text-slate-100 sm:px-6 lg:px-8;
   }
 
   .button-primary {
-    @apply inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-300;
+    @apply inline-flex items-center justify-center rounded-lg bg-emerald-300 px-4 py-2 text-sm font-black text-[#062018] transition hover:bg-emerald-200 focus:outline-none focus:ring-2 focus:ring-emerald-300;
   }
 
   .button-secondary {
-    @apply inline-flex items-center justify-center rounded-md border border-primary-200 px-4 py-2 text-sm font-semibold text-primary transition hover:border-primary hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-200;
+    @apply inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-bold text-slate-200 transition hover:bg-white/[0.08] hover:text-white focus:outline-none focus:ring-2 focus:ring-emerald-300;
+  }
+
+  .landing-button {
+    @apply relative isolate overflow-hidden transition duration-300 ease-out will-change-transform hover:-translate-y-0.5 hover:scale-[1.02] active:translate-y-0 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-emerald-300/70;
+  }
+
+  .landing-button::before {
+    background: linear-gradient(
+      120deg,
+      transparent 0%,
+      rgb(255 255 255 / 0.22) 45%,
+      transparent 70%
+    );
+    content: '';
+    height: 160%;
+    left: -80%;
+    pointer-events: none;
+    position: absolute;
+    top: -30%;
+    transform: rotate(18deg);
+    transition: left 0.65s ease;
+    width: 42%;
+    z-index: -1;
+  }
+
+  .landing-button:hover::before {
+    left: 120%;
+  }
+
+  .landing-button-primary {
+    animation: landing-button-glow 2.8s ease-in-out infinite;
+  }
+
+  .landing-button-sos {
+    animation: landing-sos-pulse 1.8s ease-in-out infinite;
+  }
+
+  .landing-button-donate {
+    animation: landing-donate-border 2.4s ease-in-out infinite;
+    border-color: rgb(110 231 183 / 0.42);
+    box-shadow:
+      0 0 0 1px rgb(110 231 183 / 0.08) inset,
+      0 18px 48px rgb(16 185 129 / 0.14);
+  }
+
+  .landing-button-donate .landing-glow-text {
+    color: #a7f3d0;
+    text-shadow:
+      0 0 8px rgb(110 231 183 / 0.75),
+      0 0 18px rgb(16 185 129 / 0.55),
+      0 0 34px rgb(16 185 129 / 0.28);
+  }
+
+  .landing-risk-card {
+    animation: landing-card-rise 0.7s ease both;
+    transition:
+      border-color 0.25s ease,
+      box-shadow 0.25s ease,
+      transform 0.25s ease;
+  }
+
+  .landing-risk-card:hover {
+    border-color: rgb(110 231 183 / 0.28);
+    box-shadow:
+      0 22px 58px rgb(0 0 0 / 0.34),
+      0 0 34px rgb(16 185 129 / 0.12);
+    transform: translateY(-6px);
+  }
+
+  .landing-risk-icon {
+    animation: landing-soft-pulse 2.2s ease-in-out infinite;
+  }
+
+  .landing-risk-meter {
+    animation: landing-meter-fill 1s ease-out both;
+    transform-origin: left;
+  }
+
+  .landing-telemetry-panel {
+    animation: landing-card-rise 0.75s ease both;
+    animation-delay: 0.16s;
+  }
+
+  .landing-telemetry-row {
+    animation: landing-row-fade 0.55s ease both;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+  }
+
+  .landing-telemetry-row:hover {
+    background-color: rgb(110 231 183 / 0.035);
+    transform: translateX(4px);
+  }
+
+  .landing-live-dot {
+    animation: landing-live-dot 1.25s ease-in-out infinite;
   }
 
   .auth-shell {
-    @apply mx-auto grid min-h-screen w-full max-w-6xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-center lg:px-8;
+    @apply mx-auto grid min-h-screen w-full max-w-6xl gap-6 bg-[#080d0d] px-4 py-8 text-slate-100 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-center lg:px-8;
   }
 
   .auth-panel {
-    @apply rounded-lg border border-primary-100 bg-white p-6 shadow-soft sm:p-8;
+    @apply rounded-3xl border border-white/[0.07] bg-[#121818] p-6 shadow-2xl shadow-black/25 sm:p-8;
   }
 
   .form-label {
-    @apply grid gap-2 text-sm font-semibold text-slate-800;
+    @apply grid gap-2 text-sm font-bold text-slate-200;
   }
 
   .form-input {
-    @apply w-full rounded-md border border-primary-100 bg-white px-3 py-3 text-slate-950 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary-200;
+    @apply w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-3 text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-emerald-300 focus:ring-2 focus:ring-emerald-300/30;
   }
 
   .role-option {
-    @apply flex min-h-[48px] cursor-pointer items-center gap-3 rounded-md border border-primary-100 bg-primary-50 px-3 py-2 text-sm font-semibold text-slate-800 transition hover:border-primary;
+    @apply flex min-h-[48px] cursor-pointer items-center gap-3 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-semibold text-slate-200 transition hover:border-emerald-300/40;
   }
 
   .role-option input {
-    @apply h-4 w-4 accent-primary;
+    @apply h-4 w-4 accent-emerald-300;
+  }
+}
+
+/* Compatibility skin for older page markup that still uses light Tailwind utilities. */
+.bg-slate-50,
+.bg-primary-50,
+.bg-white {
+  background-color: #121818 !important;
+}
+
+.bg-white\/90,
+.bg-white\/95 {
+  background-color: rgb(18 24 24 / 0.95) !important;
+}
+
+.bg-slate-100,
+.bg-slate-200,
+.bg-primary-100,
+.bg-green-50,
+.bg-blue-50,
+.bg-emerald-50,
+.bg-violet-50,
+.bg-yellow-50,
+.bg-orange-50,
+.bg-red-50 {
+  background-color: rgb(255 255 255 / 0.04) !important;
+}
+
+.border-primary-100,
+.border-primary-200,
+.border-slate-200,
+.border-slate-300 {
+  border-color: rgb(255 255 255 / 0.07) !important;
+}
+
+.text-slate-950,
+.text-slate-900,
+.text-slate-800,
+.text-primary-950,
+.text-primary-900 {
+  color: #f8fafc !important;
+}
+
+.text-slate-700,
+.text-slate-600,
+.text-primary-800,
+.text-primary-700,
+.text-green-800,
+.text-blue-950,
+.text-blue-700,
+.text-emerald-950,
+.text-emerald-700,
+.text-violet-950,
+.text-violet-700,
+.text-yellow-700,
+.text-orange-700,
+.text-red-700 {
+  color: #cbd5e1 !important;
+}
+
+.text-slate-500,
+.text-slate-400 {
+  color: #94a3b8 !important;
+}
+
+.text-primary,
+.text-primary-600,
+.text-primary-500 {
+  color: #6ee7b7 !important;
+}
+
+.shadow-soft {
+  box-shadow: 0 24px 60px rgb(0 0 0 / 0.28) !important;
+}
+
+select.form-input,
+textarea.form-input,
+input.form-input {
+  color-scheme: dark;
+}
+
+@keyframes landing-button-glow {
+  0%,
+  100% {
+    box-shadow: 0 18px 40px rgb(16 185 129 / 0.16);
+  }
+
+  50% {
+    box-shadow: 0 22px 52px rgb(16 185 129 / 0.32);
+  }
+}
+
+@keyframes landing-sos-pulse {
+  0%,
+  100% {
+    box-shadow: 0 14px 32px rgb(127 29 29 / 0.34);
+  }
+
+  50% {
+    box-shadow: 0 18px 44px rgb(248 113 113 / 0.45);
+  }
+}
+
+@keyframes landing-donate-border {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px rgb(110 231 183 / 0.08) inset,
+      0 18px 48px rgb(16 185 129 / 0.14);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 1px rgb(110 231 183 / 0.32) inset,
+      0 0 26px rgb(110 231 183 / 0.35),
+      0 24px 58px rgb(16 185 129 / 0.26);
+  }
+}
+
+@keyframes landing-card-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes landing-meter-fill {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes landing-row-fade {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes landing-soft-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 rgb(110 231 183 / 0);
+  }
+
+  50% {
+    box-shadow: 0 0 22px rgb(110 231 183 / 0.18);
+  }
+}
+
+@keyframes landing-live-dot {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.45);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-button,
+  .landing-button-primary,
+  .landing-button-sos,
+  .landing-button-donate,
+  .landing-risk-card,
+  .landing-risk-icon,
+  .landing-risk-meter,
+  .landing-telemetry-panel,
+  .landing-telemetry-row,
+  .landing-live-dot {
+    animation: none;
+    transition: none;
+  }
+
+  .landing-button:hover {
+    transform: none;
   }
 }

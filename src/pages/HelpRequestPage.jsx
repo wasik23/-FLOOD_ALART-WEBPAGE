@@ -46,13 +46,16 @@ function HelpRequestPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <BrandHeader>
-        <Link className="rounded-md px-3 py-2 text-white/90 hover:bg-white/10" to="/">
+        <Link className="rounded-md px-3 py-2 text-slate-300 hover:bg-white/[0.06] hover:text-white" to="/">
           Home
         </Link>
-        <Link className="rounded-md px-3 py-2 text-white/90 hover:bg-white/10" to="/alerts">
+        <Link className="rounded-md px-3 py-2 text-slate-300 hover:bg-white/[0.06] hover:text-white" to="/map">
+          Live map
+        </Link>
+        <Link className="rounded-md px-3 py-2 text-slate-300 hover:bg-white/[0.06] hover:text-white" to="/alerts">
           SMS alerts
         </Link>
-        <Link className="rounded-md bg-white px-3 py-2 text-sky-800" to="/donate">
+        <Link className="landing-button landing-button-donate rounded-md border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-emerald-300" to="/donate">
           Donate now
         </Link>
       </BrandHeader>

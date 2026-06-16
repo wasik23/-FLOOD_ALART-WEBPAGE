@@ -13,8 +13,6 @@ import { initialShelters } from '../data/shelters.js'
 import { getLiveWaterLevels } from '../services/ffwc.js'
 import { createBangladeshMap } from '../utils/map.js'
 import { cacheDistrictRiskSnapshot } from '../utils/offlineRiskSnapshot.js'
-import BrandHeader from '../components/BrandHeader.jsx'
-import SiteFooter from '../components/SiteFooter.jsx'
 
 const layerControls = [
   { key: 'risk', label: 'Flood risk' },
@@ -161,6 +159,107 @@ function normalizeShelter(shelter) {
     contact: shelter.contact || '',
     status: getShelterStatus(shelter),
   }
+}
+
+function VolunteerIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="h-5 w-5 shrink-0"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <path
+        d="M12 7.9 11.3 7a2.8 2.8 0 0 0-4.1 3.8L12 15.5l4.8-4.7A2.8 2.8 0 0 0 12.7 7l-.7.9Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+      <path
+        d="M3.5 13.5h2.4c1.1 0 2.1.4 2.9 1.2l1.4 1.3c.6.6 1.4.9 2.2.9h3.1"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+      <path
+        d="M14.2 13.9h2.6c.6 0 1.1.5 1.1 1.1s-.5 1.1-1.1 1.1h-3.4"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+      <path
+        d="m17.6 16.1 1.6-1.3a1.45 1.45 0 0 1 2 2.1l-2.5 2.3c-.6.5-1.3.8-2.1.8h-5.2c-.9 0-1.8-.3-2.5-1L6.7 17H3.5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+      <path
+        d="M3.5 12v7"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="2"
+      />
+    </svg>
+  )
+}
+
+function SearchIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="h-5 w-5 shrink-0 text-slate-500"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <path
+        d="m21 21-4.3-4.3"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="2"
+      />
+      <circle
+        cx="11"
+        cy="11"
+        r="7"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+    </svg>
+  )
+}
+
+function SignalIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="h-5 w-5 text-emerald-300"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <path d="M5 12a7 7 0 0 1 14 0" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+      <path d="M8.5 12a3.5 3.5 0 0 1 7 0" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+      <path d="M12 16h.01" stroke="currentColor" strokeLinecap="round" strokeWidth="3" />
+    </svg>
+  )
+}
+
+function ShelterGlyph() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="h-5 w-5 text-emerald-300"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <path d="M4 10.5 12 4l8 6.5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+      <path d="M6 10v9h12v-9" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+      <path d="M10 19v-5h4v5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+    </svg>
+  )
 }
 
 function createProfileVolunteerLocations(profiles, districtCenters) {
@@ -593,14 +692,14 @@ function MapPage() {
   }, [])
 
   useEffect(() => {
-    if (!mapRef.current) return
+    if (!mapRef.current) return undefined
 
     if (ffwcLayerRef.current) {
       ffwcLayerRef.current.remove()
       ffwcLayerRef.current = null
     }
 
-    if (!visibleLayers.stations) return
+    if (!visibleLayers.stations) return undefined
 
     const markers = liveWaterStations.map((station) => {
         const marker = L.circleMarker([station.latitude, station.longitude], {
@@ -626,17 +725,24 @@ function MapPage() {
     })
 
     ffwcLayerRef.current = L.layerGroup(markers).addTo(mapRef.current)
+
+    return () => {
+      if (ffwcLayerRef.current) {
+        ffwcLayerRef.current.remove()
+        ffwcLayerRef.current = null
+      }
+    }
   }, [liveWaterStations, visibleLayers.stations])
 
   useEffect(() => {
-    if (!mapRef.current) return
+    if (!mapRef.current) return undefined
 
     if (requestLayerRef.current) {
       requestLayerRef.current.remove()
       requestLayerRef.current = null
     }
 
-    if (!visibleLayers.requests) return
+    if (!visibleLayers.requests) return undefined
 
     const requestsByDistrict = helpRequests.reduce((summary, request) => {
       if (!request.district) return summary
@@ -671,17 +777,24 @@ function MapPage() {
       .filter(Boolean)
 
     requestLayerRef.current = L.layerGroup(markers).addTo(mapRef.current)
+
+    return () => {
+      if (requestLayerRef.current) {
+        requestLayerRef.current.remove()
+        requestLayerRef.current = null
+      }
+    }
   }, [helpRequests, visibleLayers.requests])
 
   useEffect(() => {
-    if (!mapRef.current) return
+    if (!mapRef.current) return undefined
 
     if (ngoLayerRef.current) {
       ngoLayerRef.current.remove()
       ngoLayerRef.current = null
     }
 
-    if (!visibleLayers.ngos) return
+    if (!visibleLayers.ngos) return undefined
 
     const markers = defaultNgoLocations.map((ngo) => {
       const marker = L.marker([ngo.latitude, ngo.longitude], {
@@ -707,17 +820,24 @@ function MapPage() {
     })
 
     ngoLayerRef.current = L.layerGroup(markers).addTo(mapRef.current)
+
+    return () => {
+      if (ngoLayerRef.current) {
+        ngoLayerRef.current.remove()
+        ngoLayerRef.current = null
+      }
+    }
   }, [visibleLayers.ngos])
 
   useEffect(() => {
-    if (!mapRef.current) return
+    if (!mapRef.current) return undefined
 
     if (volunteerLayerRef.current) {
       volunteerLayerRef.current.remove()
       volunteerLayerRef.current = null
     }
 
-    if (!visibleLayers.volunteers) return
+    if (!visibleLayers.volunteers) return undefined
 
     const profileLocations = createProfileVolunteerLocations(
       getVolunteerProfiles(),
@@ -749,17 +869,24 @@ function MapPage() {
     })
 
     volunteerLayerRef.current = L.layerGroup(markers).addTo(mapRef.current)
+
+    return () => {
+      if (volunteerLayerRef.current) {
+        volunteerLayerRef.current.remove()
+        volunteerLayerRef.current = null
+      }
+    }
   }, [districtCount, visibleLayers.volunteers])
 
   useEffect(() => {
-    if (!mapRef.current) return
+    if (!mapRef.current) return undefined
 
     if (shelterLayerRef.current) {
       shelterLayerRef.current.remove()
       shelterLayerRef.current = null
     }
 
-    if (!visibleLayers.shelters) return
+    if (!visibleLayers.shelters) return undefined
 
     const markers = shelters
       .filter(
@@ -789,326 +916,300 @@ function MapPage() {
       })
 
     shelterLayerRef.current = L.layerGroup(markers).addTo(mapRef.current)
+
+    return () => {
+      if (shelterLayerRef.current) {
+        shelterLayerRef.current.remove()
+        shelterLayerRef.current = null
+      }
+    }
   }, [shelters, visibleLayers.shelters])
 
   return (
-    <>
-      <BrandHeader>
-        <Link className="rounded-md px-3 py-2 text-white/90 hover:bg-white/10" to="/">
-          Home
-        </Link>
-        <Link className="rounded-md bg-white px-3 py-2 text-sky-800" to="/map">
-          Map
-        </Link>
-        <Link className="rounded-md px-3 py-2 text-white/90 hover:bg-white/10" to="/alerts">
-          SMS alerts
-        </Link>
-        <Link className="rounded-md px-3 py-2 text-white/90 hover:bg-white/10" to="/request-help">
-          Request help
-        </Link>
-        <Link className="rounded-md px-3 py-2 text-white/90 hover:bg-white/10" to="/donate">
-          Donate
-        </Link>
-        <Link className="rounded-md px-3 py-2 text-white/90 hover:bg-white/10" to="/shelters">
-          Shelters
-        </Link>
-      </BrandHeader>
-
-      <main>
-        <section className="page-shell">
-      <div className="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-wide text-primary">
-            {t('map.eyebrow')}
-          </p>
-          <h1 className="mt-2 text-3xl font-bold text-slate-950">
-            {t('map.title')}
-          </h1>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <span className="rounded-md bg-primary-100 px-3 py-2 text-sm font-semibold text-primary-800">
-            {t('map.districts', { count: districtCount || 64 })}
-          </span>
-          <span
-            className={[
-              'rounded-md px-3 py-2 text-sm font-semibold',
-              isConnected
-                ? 'bg-green-100 text-green-800'
-                : 'bg-slate-200 text-slate-700',
-            ].join(' ')}
-          >
-            {isConnected ? t('map.liveWater') : t('dashboard.socketOffline')}
-          </span>
-        </div>
-      </div>
-
-      <div className="mb-6 grid gap-4 rounded-lg border border-primary-100 bg-white p-4 shadow-soft lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-        <form className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]" onSubmit={searchDistrict}>
-          <label className="form-label">
-            Search district
-            <input
-              className="form-input"
-              list="map-districts"
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search Sylhet, Feni, Kurigram..."
-              value={searchQuery}
-            />
-            <datalist id="map-districts">
-              {districtOptions.map((district) => (
-                <option key={district} value={district} />
-              ))}
-            </datalist>
-          </label>
-          <button className="button-primary self-end" type="submit">
-            Zoom
-          </button>
-        </form>
-
-        <div className="flex flex-wrap gap-2">
-          {layerControls.map((layer) => (
-            <button
-              className={[
-                'rounded-md border px-3 py-2 text-sm font-bold transition',
-                visibleLayers[layer.key]
-                  ? 'border-primary bg-primary text-white'
-                  : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100',
-              ].join(' ')}
-              key={layer.key}
-              onClick={() => toggleLayer(layer.key)}
-              type="button"
-            >
-              {layer.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="relative h-[min(72vh,680px)] overflow-hidden rounded-lg border border-primary-100 bg-white shadow-soft">
-          <div ref={mapNodeRef} className="h-full" />
-
-          <div className="absolute bottom-4 left-4 z-[400] max-w-[240px] rounded-md border border-slate-200 bg-white/95 p-3 text-sm shadow-lg backdrop-blur">
-            <p className="mb-2 font-semibold text-slate-900">
-              {t('map.legend')}
-            </p>
-            <div className="grid gap-2">
-              {visibleLayers.risk
-                ? Object.values(riskLevels).map((risk) => (
-                    <div key={risk.label} className="flex items-center gap-2">
-                      <span
-                        className="h-3 w-3 rounded-sm"
-                        style={{ backgroundColor: risk.color }}
-                      />
-                      <span className="text-slate-700">
-                        {t(`risk.${risk.label}`)}
-                      </span>
-                    </div>
-                  ))
-                : null}
-              {visibleLayers.stations ? (
-                <div className="flex items-center gap-2">
-                  <span className="h-3 w-3 rounded-full bg-red-600" />
-                  <span className="text-slate-700">FFWC station</span>
-                </div>
-              ) : null}
-              {visibleLayers.requests ? (
-                <div className="flex items-center gap-2">
-                  <span className="grid h-5 w-5 place-items-center rounded-full bg-amber-500 text-xs font-black text-white">
-                    H
-                  </span>
-                  <span className="text-slate-700">Help request</span>
-                </div>
-              ) : null}
-              {visibleLayers.shelters ? (
-                <div className="flex items-center gap-2">
-                  <span className="grid h-5 w-5 place-items-center rounded-full bg-emerald-600 text-white">
-                    <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
-                      <path d="M3 10.8 12 3l9 7.8" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" />
-                      <path d="M5 10v10h14V10" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" />
-                      <path d="M9 20v-6h6v6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" />
-                    </svg>
-                  </span>
-                  <span className="text-slate-700">Safe shelter</span>
-                </div>
-              ) : null}
-              {visibleLayers.ngos ? (
-                <div className="flex items-center gap-2">
-                  <span className="grid h-5 w-5 place-items-center rounded-full bg-violet-600 text-xs font-black text-white">
-                    N
-                  </span>
-                  <span className="text-slate-700">NGO team</span>
-                </div>
-              ) : null}
-              {visibleLayers.volunteers ? (
-                <div className="flex items-center gap-2">
-                  <span className="grid h-5 w-5 place-items-center rounded-full bg-blue-600 text-xs font-black text-white">
-                    V
-                  </span>
-                  <span className="text-slate-700">Volunteer</span>
-                </div>
-              ) : null}
-            </div>
+    <div className="min-h-screen bg-[#080d0d] text-slate-100">
+      <header className="sticky top-0 z-[700] border-b border-white/[0.06] bg-[#0b1111]/95 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+          <Link className="flex items-center gap-3" to="/">
+            <span className="grid h-9 w-9 place-items-center rounded-lg border border-emerald-300/10 bg-emerald-300/10 p-2">
+              <img alt="" className="h-full w-full" src="/reliefops-icon.svg" />
+            </span>
+            <span className="text-base font-extrabold text-white">ReliefOps</span>
+          </Link>
+          <nav className="order-3 flex w-full flex-wrap items-center justify-center gap-1 text-xs font-semibold text-slate-300 md:order-none md:w-auto">
+            <Link className="rounded-md px-3 py-2 hover:bg-white/[0.06] hover:text-white" to="/">
+              Home
+            </Link>
+            <Link className="rounded-md px-3 py-2 text-emerald-300 underline decoration-emerald-300 underline-offset-8" to="/map">
+              Live map
+            </Link>
+            <Link className="rounded-md px-3 py-2 hover:bg-white/[0.06] hover:text-white" to="/shelters">
+              Relief centers
+            </Link>
+            <Link className="rounded-md px-3 py-2 hover:bg-white/[0.06] hover:text-white" to="/alerts">
+              Alerts
+            </Link>
+          </nav>
+          <div className="flex items-center gap-2">
+            <Link className="hidden items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-white/[0.06] hover:text-white sm:inline-flex" to="/register">
+              <VolunteerIcon />
+              Volunteer
+            </Link>
+            <Link className="landing-button landing-button-sos rounded-md bg-[#ff5a61] px-4 py-2 text-xs font-extrabold text-white shadow-lg shadow-red-950/30 hover:bg-[#ff454f]" to="/request-help">
+              SOS Help
+            </Link>
           </div>
         </div>
+      </header>
 
-        <aside className="rounded-lg border border-primary-100 bg-white p-5 shadow-soft">
-          <p className="text-sm font-semibold uppercase tracking-wide text-primary">
-            {t('map.details')}
-          </p>
+      <main>
+        <section className="relative min-h-[calc(100vh-73px)] overflow-hidden">
+          <div className="absolute inset-0">
+            <div ref={mapNodeRef} className="h-full min-h-[calc(100vh-73px)] w-full" />
+          </div>
+          <div className="pointer-events-none absolute inset-0 z-[350] bg-[#0b1111]/20 backdrop-blur-[0.5px]" />
 
-          {selectedDistrict ? (
-            <div className="mt-5">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-2xl font-bold text-slate-950">
-                    {selectedDistrict.districtName}
-                  </h2>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {t('map.division', { division: selectedDistrict.division })}
-                  </p>
-                </div>
-                <span
-                  className={[
-                    'rounded-md px-3 py-1 text-sm font-bold',
-                    riskLevels[selectedDistrict.riskLevel].bgClass,
-                    riskLevels[selectedDistrict.riskLevel].textClass,
-                  ].join(' ')}
+          <div className="relative z-[500] mx-auto grid max-w-7xl gap-5 px-4 py-6 sm:px-6 lg:px-8 xl:grid-cols-[minmax(0,1fr)_390px] xl:items-start">
+            <div className="min-h-[calc(100vh-125px)]">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-center">
+                <form
+                  className="grid flex-1 gap-3 rounded-2xl border border-white/[0.07] bg-[#121818]/95 p-4 shadow-2xl shadow-black/25 backdrop-blur lg:grid-cols-[220px_auto_minmax(220px,1fr)_auto] lg:items-center"
+                  onSubmit={searchDistrict}
                 >
-                  {t(`risk.${selectedDistrict.riskLevel}`)}
-                </span>
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-300">Real-time</p>
+                    <h1 className="mt-2 text-lg font-black text-white">Bangladesh flood risk map</h1>
+                  </div>
+                  <span
+                    className={[
+                      'self-center rounded-xl border px-3 py-2 text-xs font-black',
+                      isConnected
+                        ? 'border-emerald-300/25 bg-emerald-300/10 text-emerald-300'
+                        : 'border-white/10 bg-white/[0.04] text-slate-400',
+                    ].join(' ')}
+                  >
+                    {isConnected ? 'Live feed' : 'Offline feed'}
+                  </span>
+                  <label className="relative flex min-w-0 items-center gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-4 py-3">
+                    <SearchIcon />
+                    <span className="sr-only">Search district</span>
+                    <input
+                      aria-label="Search district"
+                      className="w-full bg-transparent text-sm font-semibold text-white outline-none placeholder:text-slate-500"
+                      onChange={(event) => setSearchQuery(event.target.value)}
+                      placeholder="Search Sylhet, Feni, Kurigram..."
+                      value={searchQuery}
+                    />
+                  </label>
+                  <button className="landing-button landing-button-primary rounded-2xl bg-emerald-300 px-6 py-3 text-sm font-black text-[#062018] hover:bg-emerald-200" type="submit">
+                    Zoom
+                  </button>
+                </form>
+
+                <div className="flex flex-wrap gap-2 rounded-2xl border border-white/[0.07] bg-[#121818]/95 p-3 shadow-2xl shadow-black/25 backdrop-blur xl:max-w-[330px]">
+                  {layerControls.slice(0, 4).map((layer) => (
+                    <button
+                      className={[
+                        'rounded-xl border px-3 py-2 text-xs font-black transition',
+                        visibleLayers[layer.key]
+                          ? 'border-emerald-300/35 bg-emerald-300/15 text-emerald-200'
+                          : 'border-white/10 bg-white/[0.04] text-slate-400 hover:text-white',
+                      ].join(' ')}
+                      key={layer.key}
+                      onClick={() => toggleLayer(layer.key)}
+                      type="button"
+                    >
+                      {layer.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              <dl className="mt-6 grid gap-4">
-                <div className="rounded-md bg-slate-50 p-4">
-                  <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Live FFWC stations
-                  </dt>
-                  <dd className="mt-1 text-sm font-semibold text-slate-950">
-                    {waterStationStatus}
-                  </dd>
+              {selectedDistrict ? (
+                <div className="absolute left-1/2 top-[55%] hidden -translate-x-1/2 rounded-xl border border-red-200 bg-red-100 px-5 py-3 text-sm font-black uppercase text-red-900 shadow-2xl shadow-red-950/30 xl:block">
+                  Selected: {selectedDistrict.districtName}
                 </div>
-                <div className="rounded-md bg-slate-50 p-4">
-                  <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Safe shelters
-                  </dt>
-                  <dd className="mt-1 text-sm font-semibold text-slate-950">
-                    {shelterStatus}
-                  </dd>
-                </div>
-                <div className="rounded-md bg-slate-50 p-4">
-                  <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    {t('map.riverWater')}
-                  </dt>
-                  <dd className="mt-1 text-xl font-bold text-slate-950">
-                    {selectedDistrict.riverWaterLevel}
-                  </dd>
-                </div>
-                <div className="rounded-md bg-slate-50 p-4">
-                  <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    {t('map.lastUpdated')}
-                  </dt>
-                  <dd className="mt-1 text-sm font-semibold text-slate-950">
-                    {selectedDistrict.lastUpdated}
-                  </dd>
-                </div>
-                {latestWaterUpdate &&
-                latestWaterUpdate.districtName.toLowerCase() ===
-                  selectedDistrict.districtName.toLowerCase() ? (
-                  <div className="rounded-md bg-primary-50 p-4">
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-primary-700">
-                      {t('map.realtimeUpdate')}
-                    </dt>
-                    <dd className="mt-1 text-sm font-semibold text-primary-900">
-                      {t('map.realtimeUpdateBody')}
-                    </dd>
-                  </div>
-                ) : null}
-                {selectedStation ? (
-                  <div className="rounded-md bg-blue-50 p-4">
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-blue-700">
-                      Selected FFWC station
-                    </dt>
-                    <dd className="mt-2 text-sm font-semibold text-blue-950">
-                      <span className="block text-base font-black">
-                        {selectedStation.station}
-                      </span>
-                      <span className="mt-1 block">
-                        {selectedStation.river} | {selectedStation.district}
-                      </span>
-                      <span className="mt-2 block">
-                        Level {selectedStation.level}, danger{' '}
-                        {selectedStation.dangerLevel}
-                      </span>
-                      <span className="mt-1 block">
-                        {selectedStation.trend} | {selectedStation.risk} risk
-                      </span>
-                    </dd>
-                  </div>
-                ) : null}
-                {selectedShelter ? (
-                  <div className="rounded-md bg-emerald-50 p-4">
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-                      Selected safe shelter
-                    </dt>
-                    <dd className="mt-2 text-sm font-semibold text-emerald-950">
-                      <span className="block text-base font-black">
-                        {selectedShelter.name}
-                      </span>
-                      <span className="mt-1 block">
-                        {selectedShelter.address || selectedShelter.district}
-                      </span>
-                      <span className="mt-2 block">
-                        {selectedShelter.status} |{' '}
-                        {Math.max(
-                          selectedShelter.capacity - selectedShelter.occupied,
-                          0,
-                        )}{' '}
-                        places available
-                      </span>
-                      <span className="mt-1 block">
-                        Capacity {selectedShelter.occupied}/
-                        {selectedShelter.capacity}
-                      </span>
-                    </dd>
-                  </div>
-                ) : null}
-                {selectedResponseLocation ? (
-                  <div className="rounded-md bg-violet-50 p-4">
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-violet-700">
-                      {selectedResponseLocation.label}
-                    </dt>
-                    <dd className="mt-2 text-sm font-semibold text-violet-950">
-                      <span className="block text-base font-black">
-                        {selectedResponseLocation.name}
-                      </span>
-                      <span className="mt-1 block">
-                        {selectedResponseLocation.district}
-                      </span>
-                      <span className="mt-2 block">
-                        {selectedResponseLocation.contact
-                          ? `Contact ${selectedResponseLocation.contact}`
-                          : `Status ${selectedResponseLocation.availability}`}
-                      </span>
-                    </dd>
-                  </div>
-                ) : null}
-              </dl>
+              ) : null}
 
-              <p className="mt-6 text-sm leading-6 text-slate-600">
-                {t('map.hint')}
-              </p>
+              <div className="absolute bottom-6 left-4 z-[520] grid gap-3 sm:left-6 lg:left-8">
+                <div className="hidden w-fit grid-cols-1 overflow-hidden rounded-2xl border border-white/[0.07] bg-[#121818]/95 shadow-2xl shadow-black/25 backdrop-blur sm:grid">
+                  <button aria-label="Zoom in" className="h-14 w-14 border-b border-white/[0.06] text-3xl font-light text-white transition hover:bg-white/[0.06]" onClick={() => mapRef.current?.zoomIn()} type="button">
+                    +
+                  </button>
+                  <button aria-label="Zoom out" className="h-14 w-14 text-3xl font-light text-white transition hover:bg-white/[0.06]" onClick={() => mapRef.current?.zoomOut()} type="button">
+                    -
+                  </button>
+                </div>
+                <div className="rounded-2xl border border-white/[0.07] bg-[#121818]/95 p-5 shadow-2xl shadow-black/25 backdrop-blur">
+                  <p className="text-xs font-black uppercase tracking-[0.28em] text-slate-400">
+                    {t('map.legend')}
+                  </p>
+                  <div className="mt-5 grid gap-3 text-sm font-semibold">
+                    {visibleLayers.risk
+                      ? Object.values(riskLevels).map((risk) => (
+                          <div key={risk.label} className="flex items-center gap-3">
+                            <span
+                              className="h-3 w-3 rounded-full shadow-lg"
+                              style={{ backgroundColor: risk.color }}
+                            />
+                            <span className="text-slate-300">{t(`risk.${risk.label}`)}</span>
+                          </div>
+                        ))
+                      : null}
+                    {visibleLayers.stations ? (
+                      <div className="flex items-center gap-3">
+                        <span className="h-3 w-3 rounded-full bg-red-300" />
+                        <span className="text-slate-300">FFWC station</span>
+                      </div>
+                    ) : null}
+                    {visibleLayers.shelters ? (
+                      <div className="flex items-center gap-3">
+                        <span className="grid h-5 w-5 place-items-center rounded-full bg-emerald-300 text-xs font-black text-[#062018]">
+                          H
+                        </span>
+                        <span className="text-slate-300">Safe shelter</span>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
             </div>
-          ) : (
-            <div className="mt-5 rounded-md bg-slate-50 p-4 text-sm font-semibold text-slate-600">
-              {mapStatus}
-            </div>
-          )}
-        </aside>
-      </div>
+
+            <aside className="overflow-hidden rounded-3xl border border-white/[0.08] bg-[#121818]/95 shadow-2xl shadow-black/35 backdrop-blur xl:sticky xl:top-24 xl:max-h-[calc(100vh-104px)] xl:overflow-y-auto">
+              {selectedDistrict ? (
+                <>
+                  <div className="p-6">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-[0.32em] text-slate-400">
+                          {t('map.details')}
+                        </p>
+                        <h2 className="mt-3 text-4xl font-black leading-none text-white">
+                          {selectedDistrict.districtName}
+                        </h2>
+                        <p className="mt-3 text-lg font-semibold text-emerald-300">
+                          {t('map.division', { division: selectedDistrict.division })}
+                        </p>
+                      </div>
+                      <span className="rounded-2xl border border-red-300/20 bg-red-300/10 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-red-100">
+                        * {t(`risk.${selectedDistrict.riskLevel}`)}
+                      </span>
+                    </div>
+
+                    <div className="mt-8 rounded-2xl bg-[#1c2222] p-6">
+                      <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-400">
+                        {t('map.riverWater')}
+                      </p>
+                      <div className="mt-5 flex items-end justify-between gap-4">
+                        <p className="text-5xl font-black leading-none text-emerald-300">
+                          {selectedDistrict.riverWaterLevel}
+                        </p>
+                        <span className="rounded-xl bg-red-300/10 px-3 py-2 text-sm font-black text-red-100">
+                          +1.2m
+                        </span>
+                      </div>
+                      <p className="mt-5 text-sm italic text-slate-400">
+                        Rising significantly above danger level
+                      </p>
+                    </div>
+
+                    <div className="mt-5 grid grid-cols-2 gap-4">
+                      <div className="rounded-2xl bg-[#1c2222] p-5">
+                        <SignalIcon />
+                        <p className="mt-5 text-3xl font-black text-white">
+                          {liveWaterStations.length || 17}
+                        </p>
+                        <p className="mt-2 text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                          Live FFWC stations
+                        </p>
+                        <p className="mt-3 text-xs font-semibold text-slate-400">
+                          {waterStationStatus}
+                        </p>
+                      </div>
+                      <div className="rounded-2xl bg-[#1c2222] p-5">
+                        <ShelterGlyph />
+                        <p className="mt-5 text-3xl font-black text-white">
+                          {shelters.length || 6}
+                        </p>
+                        <p className="mt-2 text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                          Demo shelters
+                        </p>
+                        <p className="mt-3 text-xs font-semibold text-slate-400">
+                          {shelterStatus}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-6 grid gap-3">
+                      <Link className="rounded-2xl border border-white/10 bg-white/[0.06] px-6 py-4 text-center text-sm font-black text-slate-200 hover:bg-white/[0.09]" to="/alerts">
+                        Download Detailed Report
+                      </Link>
+                      <Link className="rounded-2xl border border-emerald-300/20 bg-emerald-300/10 px-6 py-4 text-center text-sm font-black text-emerald-300 hover:bg-emerald-300/15" to="/alerts">
+                        View Inundation Forecast
+                      </Link>
+                    </div>
+
+                    <p className="mt-7 text-center text-sm italic leading-6 text-slate-400">
+                      {t('map.hint')}
+                    </p>
+
+                    {latestWaterUpdate &&
+                    latestWaterUpdate.districtName.toLowerCase() ===
+                      selectedDistrict.districtName.toLowerCase() ? (
+                      <div className="mt-6 rounded-3xl border border-emerald-300/15 bg-emerald-300/10 p-5 text-sm font-semibold text-emerald-100">
+                        {t('map.realtimeUpdate')}: {t('map.realtimeUpdateBody')}
+                      </div>
+                    ) : null}
+
+                    {selectedStation || selectedShelter || selectedResponseLocation ? (
+                      <div className="mt-6 rounded-3xl border border-white/[0.07] bg-white/[0.04] p-5 text-sm font-semibold text-slate-300">
+                        {selectedStation ? (
+                          <p>
+                            {selectedStation.station}: {selectedStation.level}, danger {selectedStation.dangerLevel}
+                          </p>
+                        ) : null}
+                        {selectedShelter ? (
+                          <p>
+                            {selectedShelter.name}: {selectedShelter.status}, capacity {selectedShelter.occupied}/{selectedShelter.capacity}
+                          </p>
+                        ) : null}
+                        {selectedResponseLocation ? (
+                          <p>
+                            {selectedResponseLocation.name}: {selectedResponseLocation.contact || selectedResponseLocation.availability}
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="flex items-center justify-between bg-[#222828] px-6 py-5 text-xs font-black uppercase tracking-[0.18em] text-slate-400">
+                    <span>{t('map.lastUpdated')}</span>
+                    <span className="text-slate-200">{selectedDistrict.lastUpdated}</span>
+                  </div>
+                </>
+              ) : (
+                <div className="p-8">
+                  <p className="text-sm font-bold text-slate-300">{mapStatus}</p>
+                </div>
+              )}
+            </aside>
+          </div>
         </section>
       </main>
-      <SiteFooter />
-    </>
+
+      <footer className="border-t border-white/[0.06] bg-[#080d0d]">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-7 text-sm font-bold text-slate-400 sm:px-8 md:flex-row md:items-center md:justify-between">
+          <p className="flex items-center gap-3">
+            <img alt="" className="h-5 w-5" src="/reliefops-icon.svg" />
+            ReliefOps Bangladesh
+          </p>
+          <p>Copyright (c) 2026 belongs to washique234@gmail.com</p>
+          <p>Contact: 01920065926</p>
+          <p className="flex items-center gap-2">
+            <span className="h-3 w-3 rounded-full bg-emerald-300" />
+            Systems Operational
+          </p>
+        </div>
+      </footer>
+    </div>
   )
 }
 

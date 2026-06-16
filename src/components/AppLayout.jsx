@@ -45,7 +45,7 @@ function AppLayout() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-primary-50 text-slate-900">
+    <div className="flex min-h-screen flex-col bg-[#080d0d] text-slate-100">
       <BrandHeader>
         {navItems.map((item) => (
           <NavLink
@@ -54,26 +54,28 @@ function AppLayout() {
             className={({ isActive }) =>
               [
                 'rounded-md px-3 py-2 transition',
-                isActive ? 'bg-white text-sky-800' : 'text-white/90 hover:bg-white/10',
+                isActive
+                  ? 'text-emerald-300 underline decoration-emerald-300 underline-offset-8'
+                  : 'text-slate-300 hover:bg-white/[0.06] hover:text-white',
               ].join(' ')
             }
           >
             {item.label}
           </NavLink>
         ))}
-        <span className="max-w-[220px] truncate rounded-md bg-sky-900/40 px-3 py-2">
+        <span className="max-w-[220px] truncate rounded-md border border-white/[0.07] bg-white/[0.04] px-3 py-2 text-slate-300">
           {user.email}
         </span>
         <button
           aria-label={t('app.language')}
-          className="rounded-md border border-white/40 px-3 py-2 text-white hover:bg-white/10"
+          className="rounded-md border border-white/10 px-3 py-2 text-slate-200 hover:bg-white/[0.06]"
           onClick={toggleLanguage}
           type="button"
         >
           {i18n.language === 'bn-BD' ? t('app.english') : t('app.bangla')}
         </button>
         <button
-          className="rounded-md border border-white/40 px-3 py-2 text-white hover:bg-white/10"
+          className="rounded-md border border-red-300/20 bg-red-300/10 px-3 py-2 text-red-100 hover:bg-red-300/15"
           onClick={signOut}
           type="button"
         >

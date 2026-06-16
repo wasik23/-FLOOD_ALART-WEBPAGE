@@ -19,10 +19,13 @@ function DonationPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <BrandHeader>
-        <Link className="rounded-md px-3 py-2 text-white/90 hover:bg-white/10" to="/">
+        <Link className="rounded-md px-3 py-2 text-slate-300 hover:bg-white/[0.06] hover:text-white" to="/">
           Home
         </Link>
-        <Link className="rounded-md px-3 py-2 text-white/90 hover:bg-white/10" to="/request-help">
+        <Link className="rounded-md px-3 py-2 text-slate-300 hover:bg-white/[0.06] hover:text-white" to="/map">
+          Live map
+        </Link>
+        <Link className="landing-button landing-button-sos rounded-md bg-[#ff5a61] px-4 py-2 text-xs font-extrabold text-white shadow-lg shadow-red-950/30 hover:bg-[#ff454f]" to="/request-help">
           Request help
         </Link>
       </BrandHeader>
