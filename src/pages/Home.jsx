@@ -20,16 +20,16 @@ const riskStyles = {
     width: '56%',
   },
   High: {
-    badge: 'bg-rose-300/10 text-rose-100 ring-rose-300/20',
-    meter: 'bg-rose-200',
-    icon: 'border-rose-300/20 bg-rose-300/10 text-rose-100',
+    badge: 'bg-red-500/25 text-red-50 ring-red-300/40 shadow-lg shadow-red-950/25',
+    meter: 'bg-gradient-to-r from-red-500 via-orange-400 to-red-300',
+    icon: 'border-red-300/45 bg-red-500/20 text-red-50',
     status: 'Rising',
     width: '78%',
   },
   Critical: {
-    badge: 'bg-red-300/10 text-red-100 ring-red-300/20',
-    meter: 'bg-red-200',
-    icon: 'border-red-300/20 bg-red-300/10 text-red-100',
+    badge: 'bg-red-600/35 text-white ring-red-200/45 shadow-lg shadow-red-950/35',
+    meter: 'bg-gradient-to-r from-red-700 via-red-500 to-yellow-300',
+    icon: 'border-red-200/60 bg-red-600/30 text-white shadow-lg shadow-red-950/30',
     status: 'Critical',
     width: '94%',
   },
@@ -558,8 +558,8 @@ function HeroSection({ copy, heroImageIndex }) {
     <section className="border-b border-white/[0.04] bg-[#0b1111]">
       <div className="mx-auto grid min-h-[760px] max-w-6xl items-center gap-12 px-4 py-16 sm:px-6 md:grid-cols-[minmax(0,0.95fr)_minmax(320px,1fr)] lg:px-8">
         <div>
-          <p className="inline-flex items-center gap-2 rounded-full border border-red-300/20 bg-red-300/10 px-3 py-2 text-xs font-bold uppercase tracking-normal text-red-100">
-            <span className="h-2 w-2 rounded-full bg-red-200" />
+          <p className="inline-flex items-center gap-2 rounded-full border border-red-200/45 bg-red-600/25 px-3 py-2 text-xs font-black uppercase tracking-normal text-white shadow-lg shadow-red-950/35">
+            <span className="h-2 w-2 rounded-full bg-red-100 shadow-[0_0_14px_rgb(254_202_202/0.9)]" />
             Critical alert: northern region
           </p>
           <h1 className="mt-7 max-w-xl text-5xl font-black leading-[0.98] text-slate-100 sm:text-6xl">
@@ -649,7 +649,12 @@ function ForecastSection({ copy, forecastCards, waterDataStatus }) {
 
             return (
               <article
-                className="landing-risk-card rounded-3xl border border-white/[0.07] bg-[#121818] p-7 shadow-xl shadow-black/20"
+                className={[
+                  'landing-risk-card rounded-3xl p-7 shadow-xl',
+                  safety === 'danger'
+                    ? 'border border-red-300/35 bg-[linear-gradient(160deg,rgb(45_12_16/0.92),rgb(18_24_24/0.96)_58%)] shadow-red-950/30'
+                    : 'border border-white/[0.07] bg-[#121818] shadow-black/20',
+                ].join(' ')}
                 key={`${location}-${item.river}-${index}`}
                 style={{ animationDelay: `${index * 90}ms` }}
               >
@@ -664,7 +669,7 @@ function ForecastSection({ copy, forecastCards, waterDataStatus }) {
                     className={[
                       'landing-risk-icon grid h-11 w-11 shrink-0 place-items-center rounded-2xl border text-lg font-black',
                       safety === 'danger'
-                        ? 'border-red-300/35 bg-red-300/15 text-red-100'
+                        ? risk.icon
                         : 'border-emerald-300/35 bg-emerald-300/15 text-emerald-200',
                     ].join(' ')}
                     title={safety === 'danger' ? 'Danger level reached' : 'Below danger level'}
@@ -673,13 +678,16 @@ function ForecastSection({ copy, forecastCards, waterDataStatus }) {
                   </span>
                 </div>
 
-                <p className="mt-7 text-4xl font-black leading-none text-emerald-300">
+                <p className={[
+                  'mt-7 text-4xl font-black leading-none',
+                  safety === 'danger' ? 'text-red-200 drop-shadow-[0_0_16px_rgb(248_113_113/0.18)]' : 'text-emerald-300',
+                ].join(' ')}>
                   {item.level}
                 </p>
-                <p className="mt-3 text-xs font-bold text-slate-300">
+                <p className={['mt-3 text-xs font-bold', safety === 'danger' ? 'text-red-100' : 'text-slate-300'].join(' ')}>
                   {item.dangerLevel ? `${item.dangerLevel} danger level` : 'Above danger level'}
                 </p>
-                <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/[0.05]">
+                <div className={['mt-5 h-2 overflow-hidden rounded-full', safety === 'danger' ? 'bg-red-950/60' : 'bg-white/[0.05]'].join(' ')}>
                   <div className={`landing-risk-meter h-full rounded-full ${risk.meter}`} style={{ width: risk.width }} />
                 </div>
                 <div className="mt-7 flex items-center justify-between gap-3 text-[10px] font-extrabold uppercase">

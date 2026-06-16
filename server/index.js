@@ -17,6 +17,10 @@ import tasksRouter from './routes/tasks.js'
 import reportsRouter from './routes/reports.js'
 
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js'
+import {
+  listCurrentWaterAlerts,
+  recordWaterLevelAndAlert,
+} from './services/waterLevelAlerts.js'
 
 const PORT = process.env.PORT || 3000
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN
@@ -66,14 +70,84 @@ app.post('/events/alerts', (req, res) => {
   res.status(201).json(event)
 })
 
-app.post('/events/water-level', (req, res) => {
-  const event = {
-    id: `water-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    timestamp: now(),
-    ...req.body,
+app.get('/events/water-level/current', (_req, res) => {
+  const alerts = listCurrentWaterAlerts()
+  res.json({ count: alerts.length, alerts })
+})
+
+function eventTokenIsValid(req) {
+  if (!process.env.WATER_LEVEL_EVENT_TOKEN) return true
+
+  const authHeader = req.get('authorization') || ''
+  const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null
+  const headerToken = req.get('x-event-token')
+  return (
+    bearerToken === process.env.WATER_LEVEL_EVENT_TOKEN ||
+    headerToken === process.env.WATER_LEVEL_EVENT_TOKEN
+  )
+}
+
+app.post('/events/water-level', async (req, res, next) => {
+  try {
+    if (!eventTokenIsValid(req)) {
+      return res.status(401).json({ error: 'Invalid water-level event token.' })
+    }
+
+    const {
+      districtId,
+      district,
+      level,
+      unit,
+      riskLevel,
+      note,
+      latitude,
+      longitude,
+      observedAt,
+      upazila,
+    } = req.body ?? {}
+    const numericLevel = Number(level)
+
+    if (!Number.isFinite(numericLevel) || numericLevel < 0 || numericLevel > 50) {
+      return res.status(400).json({ error: 'level must be a number between 0 and 50.' })
+    }
+
+    if (unit && !['m', 'ft'].includes(unit)) {
+      return res.status(400).json({ error: 'unit must be m or ft.' })
+    }
+
+    if (riskLevel && !['Low', 'Medium', 'High', 'Critical'].includes(riskLevel)) {
+      return res.status(400).json({
+        error: 'riskLevel must be Low, Medium, High, or Critical.',
+      })
+    }
+
+    if (observedAt && Number.isNaN(new Date(observedAt).getTime())) {
+      return res.status(400).json({ error: 'observedAt must be a valid date.' })
+    }
+
+    const result = await recordWaterLevelAndAlert({
+      app,
+      districtId,
+      district,
+      level: numericLevel,
+      unit: unit || 'm',
+      riskLevel,
+      note,
+      latitude,
+      longitude,
+      observedAt,
+      upazila,
+      issuedById: null,
+      databaseOptional: true,
+    })
+
+    return res.status(201).json({
+      ok: true,
+      ...result,
+    })
+  } catch (error) {
+    return next(error)
   }
-  io.emit('water_level_update', event)
-  res.status(201).json(event)
 })
 
 app.post('/events/tasks/accepted', (req, res) => {

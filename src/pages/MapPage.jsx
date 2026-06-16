@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import L from 'leaflet'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import PropTypes from 'prop-types'
 import {
   getDistrictFloodRisk,
   getDistrictName,
@@ -38,6 +39,13 @@ const shelterStatusColors = {
 const markerColors = {
   ngo: '#7C3AED',
   volunteer: '#2563EB',
+}
+
+const layerGlyphProps = {
+  'aria-hidden': 'true',
+  className: 'h-4 w-4 shrink-0',
+  fill: 'none',
+  viewBox: '0 0 24 24',
 }
 
 const defaultNgoLocations = [
@@ -161,6 +169,49 @@ function normalizeShelter(shelter) {
   }
 }
 
+function getFeatureOuterRings(feature) {
+  const geometry = feature.geometry
+
+  if (!geometry) return []
+
+  if (geometry.type === 'Polygon') {
+    return geometry.coordinates[0] ? [geometry.coordinates[0]] : []
+  }
+
+  if (geometry.type === 'MultiPolygon') {
+    return geometry.coordinates
+      .map((polygon) => polygon[0])
+      .filter(Boolean)
+  }
+
+  return []
+}
+
+function createBangladeshFocusMask(geoJson) {
+  const worldBounds = [
+    [-90, -180],
+    [-90, 180],
+    [90, 180],
+    [90, -180],
+  ]
+  const districtHoles = geoJson.features
+    .flatMap(getFeatureOuterRings)
+    .map((ring) =>
+      ring.map(([longitude, latitude]) => [latitude, longitude]),
+    )
+
+  return L.polygon([worldBounds, ...districtHoles], {
+    className: 'bangladesh-focus-mask',
+    color: 'transparent',
+    fillColor: '#000000',
+    fillOpacity: 0.86,
+    fillRule: 'evenodd',
+    interactive: false,
+    pane: 'focusMaskPane',
+    stroke: false,
+  })
+}
+
 function VolunteerIcon() {
   return (
     <svg
@@ -262,6 +313,85 @@ function ShelterGlyph() {
   )
 }
 
+function LayerGlyph({ type }) {
+  if (type === 'risk') {
+    return (
+      <svg {...layerGlyphProps}>
+        <path d="M4 15c2.3-1.8 4.7-1.8 7 0s4.7 1.8 7 0" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+        <path d="M6 11c1.7-1.3 3.3-1.3 5 0s3.3 1.3 5 0" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+        <path d="M8 7c1.1-.8 2.2-.8 3.3 0s2.2.8 3.3 0" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+        <path d="M5 19h14" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+      </svg>
+    )
+  }
+
+  if (type === 'stations') return <SignalIcon />
+  if (type === 'shelters') return <ShelterGlyph />
+
+  if (type === 'requests') {
+    return (
+      <svg {...layerGlyphProps}>
+        <path d="M12 4v16" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+        <path d="M4 12h16" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+      </svg>
+    )
+  }
+
+  if (type === 'ngos') {
+    return (
+      <svg {...layerGlyphProps}>
+        <path d="M12 4 4 8l8 4 8-4-8-4Z" stroke="currentColor" strokeLinejoin="round" strokeWidth="2" />
+        <path d="M4 12l8 4 8-4" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+        <path d="M4 16l8 4 8-4" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+      </svg>
+    )
+  }
+
+  return <VolunteerIcon />
+}
+
+LayerGlyph.propTypes = {
+  type: PropTypes.string.isRequired,
+}
+
+function TrendIcon() {
+  return (
+    <svg aria-hidden="true" className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24">
+      <path d="m4 16 5-5 4 4 7-8" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+      <path d="M15 7h5v5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+    </svg>
+  )
+}
+
+function BellIcon() {
+  return (
+    <svg aria-hidden="true" className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24">
+      <path d="M6 9a6 6 0 0 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+      <path d="M10 21h4" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+    </svg>
+  )
+}
+
+function DownloadIcon() {
+  return (
+    <svg aria-hidden="true" className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24">
+      <path d="M12 4v10" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+      <path d="m8 10 4 4 4-4" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+      <path d="M5 20h14" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+    </svg>
+  )
+}
+
+function ForecastIcon() {
+  return (
+    <svg aria-hidden="true" className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24">
+      <path d="M4 18c3-6 6-6 9 0 2-4 4-6 7-8" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+      <path d="m17 10 3-1-1 3" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+      <path d="M6 6l1.2 2.4L10 9.5l-2.4 1.2L6.5 13 5.3 10.6 3 9.5l2.4-1.2L6 6Z" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.8" />
+    </svg>
+  )
+}
+
 function createProfileVolunteerLocations(profiles, districtCenters) {
   return profiles
     .map((profile, index) => {
@@ -289,6 +419,9 @@ function createProfileVolunteerLocations(profiles, districtCenters) {
 
 function MapPage() {
   const { i18n, t } = useTranslation()
+  const toggleLanguage = () => {
+    i18n.changeLanguage(i18n.language === 'bn-BD' ? 'en' : 'bn-BD')
+  }
   const mapNodeRef = useRef(null)
   const mapRef = useRef(null)
   const geoJsonLayerRef = useRef(null)
@@ -297,6 +430,7 @@ function MapPage() {
   const shelterLayerRef = useRef(null)
   const ngoLayerRef = useRef(null)
   const volunteerLayerRef = useRef(null)
+  const focusMaskLayerRef = useRef(null)
   const selectedLayerRef = useRef(null)
   const districtLayersByNameRef = useRef({})
   const districtCentersRef = useRef({})
@@ -304,10 +438,9 @@ function MapPage() {
   const waterLevelUpdatesRef = useRef({})
   const [selectedDistrict, setSelectedDistrict] = useState(null)
   const [selectedStation, setSelectedStation] = useState(null)
-  const [districtCount, setDistrictCount] = useState(0)
   const [districtOptions, setDistrictOptions] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
-  const [mapStatus, setMapStatus] = useState(t('map.loading'))
+  const [mapStatus, setMapStatus] = useState(() => t('map.loading'))
   const [latestWaterUpdate, setLatestWaterUpdate] = useState(null)
   const [liveWaterStations, setLiveWaterStations] = useState([])
   const [waterStationStatus, setWaterStationStatus] = useState('Loading stations')
@@ -329,6 +462,14 @@ function MapPage() {
     visibleLayersRef.current = visibleLayers
   }, [visibleLayers])
   const locale = i18n.language === 'bn-BD' ? 'bn-BD' : 'en-BD'
+  const updateDateFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat(locale, {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      }),
+    [locale],
+  )
   const lastUpdated = useMemo(
     () => new Intl.DateTimeFormat(locale, {
       dateStyle: 'medium',
@@ -387,10 +528,7 @@ function MapPage() {
           districtName,
           lastUpdated:
             update.lastUpdated ||
-            new Intl.DateTimeFormat(locale, {
-              dateStyle: 'medium',
-              timeStyle: 'short',
-            }).format(new Date()),
+            updateDateFormatter.format(new Date()),
           riskLevel: update.riskLevel,
           riverWaterLevel: update.riverWaterLevel,
         }
@@ -440,7 +578,7 @@ function MapPage() {
         })
       },
     }),
-    [getFeatureRisk, locale],
+    [getFeatureRisk, updateDateFormatter],
   )
   const { isConnected } = useSocket(socketHandlers)
 
@@ -509,6 +647,12 @@ function MapPage() {
     }
 
     const map = createBangladeshMap(mapNodeRef.current)
+    if (!map.getPane('focusMaskPane')) {
+      map.createPane('focusMaskPane')
+      map.getPane('focusMaskPane').style.zIndex = 350
+      map.getPane('focusMaskPane').style.pointerEvents = 'none'
+    }
+    map.scrollWheelZoom.enable()
     mapRef.current = map
 
     async function loadDistricts() {
@@ -520,7 +664,6 @@ function MapPage() {
         }
 
         const geoJson = await response.json()
-        setDistrictCount(geoJson.features.length)
         setDistrictOptions(
           geoJson.features
             .map((feature) => getDistrictName(feature.properties))
@@ -566,12 +709,18 @@ function MapPage() {
         }).addTo(map)
 
         geoJsonLayerRef.current = districtLayer
+        focusMaskLayerRef.current = createBangladeshFocusMask(geoJson).addTo(map)
+        districtLayer.bringToFront()
         districtLayer.eachLayer((layer) => {
           const name = getDistrictName(layer.feature.properties).toLowerCase()
           districtCentersRef.current[name] = layer.getBounds().getCenter()
         })
         setHelpRequests(getHelpRequests())
-        map.fitBounds(districtLayer.getBounds(), { padding: [18, 18] })
+        const bangladeshBounds = districtLayer.getBounds()
+        map.setMaxBounds(bangladeshBounds.pad(0.35))
+        map.options.maxBoundsViscosity = 0.75
+        map.setMinZoom(5)
+        map.fitBounds(bangladeshBounds, { padding: [18, 18] })
 
         const firstFeature = geoJson.features[0]
         setSelectedDistrict(getFeatureRisk(firstFeature))
@@ -592,6 +741,7 @@ function MapPage() {
       shelterLayerRef.current = null
       ngoLayerRef.current = null
       volunteerLayerRef.current = null
+      focusMaskLayerRef.current = null
       selectedLayerRef.current = null
       districtLayersByNameRef.current = {}
       districtCentersRef.current = {}
@@ -876,7 +1026,7 @@ function MapPage() {
         volunteerLayerRef.current = null
       }
     }
-  }, [districtCount, visibleLayers.volunteers])
+  }, [districtOptions.length, visibleLayers.volunteers])
 
   useEffect(() => {
     if (!mapRef.current) return undefined
@@ -926,34 +1076,43 @@ function MapPage() {
   }, [shelters, visibleLayers.shelters])
 
   return (
-    <div className="min-h-screen bg-[#080d0d] text-slate-100">
-      <header className="sticky top-0 z-[700] border-b border-white/[0.06] bg-[#0b1111]/95 backdrop-blur">
+    <div className="h-screen overflow-hidden bg-[#111717] text-slate-100">
+      <header className="relative z-[760] border-b border-white/[0.06] bg-[#0b1111]/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <Link className="flex items-center gap-3" to="/">
-            <span className="grid h-9 w-9 place-items-center rounded-lg border border-emerald-300/10 bg-emerald-300/10 p-2">
-              <img alt="" className="h-full w-full" src="/reliefops-icon.svg" />
+            <span className="grid h-9 w-9 place-items-center rounded-lg border border-emerald-300/10 bg-emerald-300/10">
+              <img alt="" className="h-6 w-6" src="/reliefops-icon.svg" />
             </span>
             <span className="text-base font-extrabold text-white">ReliefOps</span>
           </Link>
+
           <nav className="order-3 flex w-full flex-wrap items-center justify-center gap-1 text-xs font-semibold text-slate-300 md:order-none md:w-auto">
-            <Link className="rounded-md px-3 py-2 hover:bg-white/[0.06] hover:text-white" to="/">
-              Home
-            </Link>
+            <a className="rounded-md px-3 py-2 hover:bg-white/[0.06] hover:text-white" href="/#forecasts">
+              Water forecast
+            </a>
             <Link className="rounded-md px-3 py-2 text-emerald-300 underline decoration-emerald-300 underline-offset-8" to="/map">
               Live map
             </Link>
-            <Link className="rounded-md px-3 py-2 hover:bg-white/[0.06] hover:text-white" to="/shelters">
-              Relief centers
-            </Link>
-            <Link className="rounded-md px-3 py-2 hover:bg-white/[0.06] hover:text-white" to="/alerts">
-              Alerts
-            </Link>
+            <a className="rounded-md px-3 py-2 hover:bg-white/[0.06] hover:text-white" href="/#news">
+              Flood news
+            </a>
+            <a className="rounded-md px-3 py-2 hover:bg-white/[0.06] hover:text-white" href="/#contact">
+              Contact
+            </a>
           </nav>
+
           <div className="flex items-center gap-2">
             <Link className="hidden items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-white/[0.06] hover:text-white sm:inline-flex" to="/register">
               <VolunteerIcon />
-              Volunteer
+              Volunteer register
             </Link>
+            <button
+              className="rounded-md border border-white/10 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-white/[0.06]"
+              onClick={toggleLanguage}
+              type="button"
+            >
+              {i18n.language === 'bn-BD' ? 'English' : 'বাংলা'}
+            </button>
             <Link className="landing-button landing-button-sos rounded-md bg-[#ff5a61] px-4 py-2 text-xs font-extrabold text-white shadow-lg shadow-red-950/30 hover:bg-[#ff454f]" to="/request-help">
               SOS Help
             </Link>
@@ -961,252 +1120,237 @@ function MapPage() {
         </div>
       </header>
 
-      <main>
-        <section className="relative min-h-[calc(100vh-73px)] overflow-hidden">
-          <div className="absolute inset-0">
-            <div ref={mapNodeRef} className="h-full min-h-[calc(100vh-73px)] w-full" />
-          </div>
-          <div className="pointer-events-none absolute inset-0 z-[350] bg-[#0b1111]/20 backdrop-blur-[0.5px]" />
+      <main className="relative h-[calc(100vh-126px)] overflow-hidden">
+        <div className="absolute inset-0">
+          <div ref={mapNodeRef} className="h-full w-full" />
+        </div>
+        <div className="pointer-events-none absolute inset-0 z-[350] bg-[#000000]/10" />
+        <div className="pointer-events-none absolute inset-0 z-[351] bg-[radial-gradient(circle_at_20%_8%,rgb(117_255_209/0.12),transparent_34%),linear-gradient(90deg,rgb(18_24_24/0.20),rgb(18_24_24/0.05)_45%,rgb(18_24_24/0.42))]" />
 
-          <div className="relative z-[500] mx-auto grid max-w-7xl gap-5 px-4 py-6 sm:px-6 lg:px-8 xl:grid-cols-[minmax(0,1fr)_390px] xl:items-start">
-            <div className="min-h-[calc(100vh-125px)]">
-              <div className="flex flex-col gap-4 xl:flex-row xl:items-center">
-                <form
-                  className="grid flex-1 gap-3 rounded-2xl border border-white/[0.07] bg-[#121818]/95 p-4 shadow-2xl shadow-black/25 backdrop-blur lg:grid-cols-[220px_auto_minmax(220px,1fr)_auto] lg:items-center"
-                  onSubmit={searchDistrict}
+        <section className="pointer-events-none relative z-[520] mx-auto grid h-full max-w-[1480px] gap-3 px-4 py-4 sm:px-6 lg:px-8 xl:grid-cols-[minmax(0,1fr)_300px]">
+          <div className="min-h-0">
+            <form
+              className="pointer-events-auto mx-auto max-w-[760px] rounded-2xl border border-white/[0.08] bg-[#1d2424]/78 p-2 shadow-2xl shadow-black/30 backdrop-blur-md"
+              onSubmit={searchDistrict}
+            >
+              <label className="flex items-center gap-2 rounded-xl px-2 py-1">
+                <SearchIcon />
+                <span className="sr-only">Search district</span>
+                <input
+                  aria-label="Search district"
+                  className="min-h-[24px] w-full bg-transparent text-[10px] font-medium text-white outline-none placeholder:text-slate-400/80"
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Search by District, Station, or Shelter..."
+                  value={searchQuery}
+                />
+                <button className="landing-button rounded-lg bg-[#00795f] px-3 py-1.5 text-[8px] font-black text-white shadow-lg shadow-black/20 hover:bg-[#009876]" type="submit">
+                  Zoom
+                </button>
+              </label>
+            </form>
+
+            <div className="pointer-events-auto mx-auto mt-2 flex max-w-[760px] flex-wrap items-center justify-center gap-1.5">
+              {layerControls.map((layer) => (
+                <button
+                  aria-pressed={visibleLayers[layer.key]}
+                  className={[
+                    'inline-flex min-h-[24px] items-center gap-1.5 rounded-full border px-2.5 text-[8px] font-bold shadow-lg shadow-black/20 backdrop-blur transition',
+                    visibleLayers[layer.key]
+                      ? 'border-[#75ffd1]/35 bg-[#75ffd1]/15 text-[#75ffd1]'
+                      : 'border-white/10 bg-[#202727]/75 text-slate-300 hover:border-[#75ffd1]/20 hover:text-white',
+                  ].join(' ')}
+                  key={layer.key}
+                  onClick={() => toggleLayer(layer.key)}
+                  type="button"
                 >
-                  <div>
-                    <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-300">Real-time</p>
-                    <h1 className="mt-2 text-lg font-black text-white">Bangladesh flood risk map</h1>
-                  </div>
-                  <span
-                    className={[
-                      'self-center rounded-xl border px-3 py-2 text-xs font-black',
-                      isConnected
-                        ? 'border-emerald-300/25 bg-emerald-300/10 text-emerald-300'
-                        : 'border-white/10 bg-white/[0.04] text-slate-400',
-                    ].join(' ')}
-                  >
-                    {isConnected ? 'Live feed' : 'Offline feed'}
-                  </span>
-                  <label className="relative flex min-w-0 items-center gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-4 py-3">
-                    <SearchIcon />
-                    <span className="sr-only">Search district</span>
-                    <input
-                      aria-label="Search district"
-                      className="w-full bg-transparent text-sm font-semibold text-white outline-none placeholder:text-slate-500"
-                      onChange={(event) => setSearchQuery(event.target.value)}
-                      placeholder="Search Sylhet, Feni, Kurigram..."
-                      value={searchQuery}
-                    />
-                  </label>
-                  <button className="landing-button landing-button-primary rounded-2xl bg-emerald-300 px-6 py-3 text-sm font-black text-[#062018] hover:bg-emerald-200" type="submit">
-                    Zoom
-                  </button>
-                </form>
-
-                <div className="flex flex-wrap gap-2 rounded-2xl border border-white/[0.07] bg-[#121818]/95 p-3 shadow-2xl shadow-black/25 backdrop-blur xl:max-w-[330px]">
-                  {layerControls.slice(0, 4).map((layer) => (
-                    <button
-                      className={[
-                        'rounded-xl border px-3 py-2 text-xs font-black transition',
-                        visibleLayers[layer.key]
-                          ? 'border-emerald-300/35 bg-emerald-300/15 text-emerald-200'
-                          : 'border-white/10 bg-white/[0.04] text-slate-400 hover:text-white',
-                      ].join(' ')}
-                      key={layer.key}
-                      onClick={() => toggleLayer(layer.key)}
-                      type="button"
-                    >
-                      {layer.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {selectedDistrict ? (
-                <div className="absolute left-1/2 top-[55%] hidden -translate-x-1/2 rounded-xl border border-red-200 bg-red-100 px-5 py-3 text-sm font-black uppercase text-red-900 shadow-2xl shadow-red-950/30 xl:block">
-                  Selected: {selectedDistrict.districtName}
-                </div>
-              ) : null}
-
-              <div className="absolute bottom-6 left-4 z-[520] grid gap-3 sm:left-6 lg:left-8">
-                <div className="hidden w-fit grid-cols-1 overflow-hidden rounded-2xl border border-white/[0.07] bg-[#121818]/95 shadow-2xl shadow-black/25 backdrop-blur sm:grid">
-                  <button aria-label="Zoom in" className="h-14 w-14 border-b border-white/[0.06] text-3xl font-light text-white transition hover:bg-white/[0.06]" onClick={() => mapRef.current?.zoomIn()} type="button">
-                    +
-                  </button>
-                  <button aria-label="Zoom out" className="h-14 w-14 text-3xl font-light text-white transition hover:bg-white/[0.06]" onClick={() => mapRef.current?.zoomOut()} type="button">
-                    -
-                  </button>
-                </div>
-                <div className="rounded-2xl border border-white/[0.07] bg-[#121818]/95 p-5 shadow-2xl shadow-black/25 backdrop-blur">
-                  <p className="text-xs font-black uppercase tracking-[0.28em] text-slate-400">
-                    {t('map.legend')}
-                  </p>
-                  <div className="mt-5 grid gap-3 text-sm font-semibold">
-                    {visibleLayers.risk
-                      ? Object.values(riskLevels).map((risk) => (
-                          <div key={risk.label} className="flex items-center gap-3">
-                            <span
-                              className="h-3 w-3 rounded-full shadow-lg"
-                              style={{ backgroundColor: risk.color }}
-                            />
-                            <span className="text-slate-300">{t(`risk.${risk.label}`)}</span>
-                          </div>
-                        ))
-                      : null}
-                    {visibleLayers.stations ? (
-                      <div className="flex items-center gap-3">
-                        <span className="h-3 w-3 rounded-full bg-red-300" />
-                        <span className="text-slate-300">FFWC station</span>
-                      </div>
-                    ) : null}
-                    {visibleLayers.shelters ? (
-                      <div className="flex items-center gap-3">
-                        <span className="grid h-5 w-5 place-items-center rounded-full bg-emerald-300 text-xs font-black text-[#062018]">
-                          H
-                        </span>
-                        <span className="text-slate-300">Safe shelter</span>
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
+                  <LayerGlyph type={layer.key} />
+                  {layer.label}
+                </button>
+              ))}
             </div>
-
-            <aside className="overflow-hidden rounded-3xl border border-white/[0.08] bg-[#121818]/95 shadow-2xl shadow-black/35 backdrop-blur xl:sticky xl:top-24 xl:max-h-[calc(100vh-104px)] xl:overflow-y-auto">
-              {selectedDistrict ? (
-                <>
-                  <div className="p-6">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="text-xs font-black uppercase tracking-[0.32em] text-slate-400">
-                          {t('map.details')}
-                        </p>
-                        <h2 className="mt-3 text-4xl font-black leading-none text-white">
-                          {selectedDistrict.districtName}
-                        </h2>
-                        <p className="mt-3 text-lg font-semibold text-emerald-300">
-                          {t('map.division', { division: selectedDistrict.division })}
-                        </p>
-                      </div>
-                      <span className="rounded-2xl border border-red-300/20 bg-red-300/10 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-red-100">
-                        * {t(`risk.${selectedDistrict.riskLevel}`)}
-                      </span>
-                    </div>
-
-                    <div className="mt-8 rounded-2xl bg-[#1c2222] p-6">
-                      <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-400">
-                        {t('map.riverWater')}
-                      </p>
-                      <div className="mt-5 flex items-end justify-between gap-4">
-                        <p className="text-5xl font-black leading-none text-emerald-300">
-                          {selectedDistrict.riverWaterLevel}
-                        </p>
-                        <span className="rounded-xl bg-red-300/10 px-3 py-2 text-sm font-black text-red-100">
-                          +1.2m
-                        </span>
-                      </div>
-                      <p className="mt-5 text-sm italic text-slate-400">
-                        Rising significantly above danger level
-                      </p>
-                    </div>
-
-                    <div className="mt-5 grid grid-cols-2 gap-4">
-                      <div className="rounded-2xl bg-[#1c2222] p-5">
-                        <SignalIcon />
-                        <p className="mt-5 text-3xl font-black text-white">
-                          {liveWaterStations.length || 17}
-                        </p>
-                        <p className="mt-2 text-xs font-black uppercase tracking-[0.14em] text-slate-500">
-                          Live FFWC stations
-                        </p>
-                        <p className="mt-3 text-xs font-semibold text-slate-400">
-                          {waterStationStatus}
-                        </p>
-                      </div>
-                      <div className="rounded-2xl bg-[#1c2222] p-5">
-                        <ShelterGlyph />
-                        <p className="mt-5 text-3xl font-black text-white">
-                          {shelters.length || 6}
-                        </p>
-                        <p className="mt-2 text-xs font-black uppercase tracking-[0.14em] text-slate-500">
-                          Demo shelters
-                        </p>
-                        <p className="mt-3 text-xs font-semibold text-slate-400">
-                          {shelterStatus}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="mt-6 grid gap-3">
-                      <Link className="rounded-2xl border border-white/10 bg-white/[0.06] px-6 py-4 text-center text-sm font-black text-slate-200 hover:bg-white/[0.09]" to="/alerts">
-                        Download Detailed Report
-                      </Link>
-                      <Link className="rounded-2xl border border-emerald-300/20 bg-emerald-300/10 px-6 py-4 text-center text-sm font-black text-emerald-300 hover:bg-emerald-300/15" to="/alerts">
-                        View Inundation Forecast
-                      </Link>
-                    </div>
-
-                    <p className="mt-7 text-center text-sm italic leading-6 text-slate-400">
-                      {t('map.hint')}
-                    </p>
-
-                    {latestWaterUpdate &&
-                    latestWaterUpdate.districtName.toLowerCase() ===
-                      selectedDistrict.districtName.toLowerCase() ? (
-                      <div className="mt-6 rounded-3xl border border-emerald-300/15 bg-emerald-300/10 p-5 text-sm font-semibold text-emerald-100">
-                        {t('map.realtimeUpdate')}: {t('map.realtimeUpdateBody')}
-                      </div>
-                    ) : null}
-
-                    {selectedStation || selectedShelter || selectedResponseLocation ? (
-                      <div className="mt-6 rounded-3xl border border-white/[0.07] bg-white/[0.04] p-5 text-sm font-semibold text-slate-300">
-                        {selectedStation ? (
-                          <p>
-                            {selectedStation.station}: {selectedStation.level}, danger {selectedStation.dangerLevel}
-                          </p>
-                        ) : null}
-                        {selectedShelter ? (
-                          <p>
-                            {selectedShelter.name}: {selectedShelter.status}, capacity {selectedShelter.occupied}/{selectedShelter.capacity}
-                          </p>
-                        ) : null}
-                        {selectedResponseLocation ? (
-                          <p>
-                            {selectedResponseLocation.name}: {selectedResponseLocation.contact || selectedResponseLocation.availability}
-                          </p>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </div>
-                  <div className="flex items-center justify-between bg-[#222828] px-6 py-5 text-xs font-black uppercase tracking-[0.18em] text-slate-400">
-                    <span>{t('map.lastUpdated')}</span>
-                    <span className="text-slate-200">{selectedDistrict.lastUpdated}</span>
-                  </div>
-                </>
-              ) : (
-                <div className="p-8">
-                  <p className="text-sm font-bold text-slate-300">{mapStatus}</p>
-                </div>
-              )}
-            </aside>
           </div>
+
+          <aside className="pointer-events-auto self-start overflow-hidden rounded-2xl border border-white/[0.10] bg-[#111717]/92 p-3 shadow-2xl shadow-black/40 backdrop-blur-xl">
+            {selectedDistrict ? (
+              <>
+                <div className="flex items-start justify-between gap-2.5">
+                  <div>
+                    <p className="text-[9px] uppercase tracking-[0.18em] text-slate-300/80">
+                      Active Focus
+                    </p>
+                    <h1 className="mt-1.5 text-[10px] font-semibold text-white">
+                      {selectedDistrict.districtName}
+                    </h1>
+                    <p className="mt-0.5 text-[7px] font-semibold text-slate-300">
+                      {t('map.division', { division: selectedDistrict.division })}
+                    </p>
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 rounded-md bg-red-700 px-2 py-1 text-[9px] font-bold uppercase text-red-50 shadow-lg shadow-red-950/30">
+                    <span className="h-1.5 w-1.5 rounded-full bg-red-100" />
+                    {t(`risk.${selectedDistrict.riskLevel}`)}
+                  </span>
+                </div>
+
+                <div className="mt-4 rounded-xl bg-[#343c3c]/72 p-2.5 shadow-inner shadow-black/10">
+                  <p className="text-[10px] font-medium text-slate-300">{t('map.riverWater')}</p>
+                  <div className="mt-1.5 flex flex-wrap items-end gap-2">
+                    <p className="text-2xl font-black leading-none text-slate-100">
+                      {String(selectedDistrict.riverWaterLevel).replace(' ', '')}
+                    </p>
+                    <span className="mb-0.5 inline-flex items-center gap-1 text-[9px] font-bold text-red-200">
+                      <TrendIcon />
+                      +0.42
+                    </span>
+                  </div>
+                  <div className="mt-3 h-1 overflow-hidden rounded-full bg-white/10">
+                    <div className="h-full w-[82%] rounded-full bg-red-200" />
+                  </div>
+                </div>
+
+                <div className="mt-3.5 grid grid-cols-2 gap-2">
+                  <div className="rounded-xl bg-[#3a4242]/75 p-2.5">
+                    <SignalIcon />
+                    <p className="mt-2 text-[10px] text-slate-300">FFWC Stations</p>
+                    <p className="mt-1 text-xs font-black text-white">
+                      {liveWaterStations.length || 0} / {Math.max(liveWaterStations.length || 0, 14)}
+                    </p>
+                    <p className="mt-1.5 text-[6px] font-semibold text-slate-400">{waterStationStatus}</p>
+                  </div>
+                  <div className="rounded-xl bg-[#3a4242]/75 p-2.5">
+                    <ShelterGlyph />
+                    <p className="mt-2 text-[10px] text-slate-300">Demo Shelters</p>
+                    <p className="mt-1 text-xs font-black text-white">{shelters.length || 0}</p>
+                    <p className="mt-1.5 text-[6px] font-semibold text-slate-400">{shelterStatus}</p>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <div className="flex items-center gap-1.5 text-[10px] font-medium text-slate-200">
+                    <BellIcon />
+                    <span>Recent Alerts</span>
+                  </div>
+                  <div className="mt-2 grid gap-2.5 border-l border-[#75ffd1]/35 pl-2 text-[9px] leading-4 text-slate-300">
+                    <p>
+                      <span className="mr-2 text-slate-400">14:22</span>
+                      Severe surge predicted near {selectedDistrict.districtName} within 4h.
+                    </p>
+                    <p>
+                      <span className="mr-2 text-slate-400">13:45</span>
+                      NGO team deployed to {selectedDistrict.division} response sector.
+                    </p>
+                  </div>
+                </div>
+
+                {latestWaterUpdate &&
+                latestWaterUpdate.districtName.toLowerCase() ===
+                  selectedDistrict.districtName.toLowerCase() ? (
+                  <div className="mt-3.5 rounded-xl border border-[#75ffd1]/20 bg-[#75ffd1]/10 p-2 text-[7px] font-semibold text-[#b7ffe7]">
+                    {t('map.realtimeUpdate')}: {t('map.realtimeUpdateBody')}
+                  </div>
+                ) : null}
+
+                {selectedStation || selectedShelter || selectedResponseLocation ? (
+                  <div className="mt-3.5 rounded-xl border border-white/10 bg-white/[0.06] p-2 text-[7px] font-semibold text-slate-200">
+                    {selectedStation ? (
+                      <p>
+                        {selectedStation.station}: {selectedStation.level}, danger {selectedStation.dangerLevel}
+                      </p>
+                    ) : null}
+                    {selectedShelter ? (
+                      <p>
+                        {selectedShelter.name}: {selectedShelter.status}, capacity {selectedShelter.occupied}/{selectedShelter.capacity}
+                      </p>
+                    ) : null}
+                    {selectedResponseLocation ? (
+                      <p>
+                        {selectedResponseLocation.name}: {selectedResponseLocation.contact || selectedResponseLocation.availability}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                <div className="mt-4 grid gap-2 border-t border-white/15 pt-2.5">
+                  <Link className="landing-button flex items-center justify-center gap-1.5 rounded-xl bg-[#58dfb1] px-3 py-2.5 text-[9px] font-black text-[#062018] shadow-xl shadow-emerald-950/25 hover:bg-[#75ffd1]" to="/alerts">
+                    <ForecastIcon />
+                    View Inundation Forecast
+                  </Link>
+                  <Link className="flex items-center justify-center gap-1.5 rounded-xl bg-[#202525] px-3 py-2 text-[9px] font-semibold text-[#75ffd1] shadow-lg shadow-black/25 transition hover:bg-[#293030]" to="/alerts">
+                    <DownloadIcon />
+                    Download Detailed Report
+                  </Link>
+                </div>
+              </>
+            ) : (
+              <p className="text-[9px] font-bold text-slate-200">{mapStatus}</p>
+            )}
+          </aside>
         </section>
+
+        <div className="absolute left-4 top-32 z-[540] rounded-md border border-slate-200 bg-white/95 p-3 text-slate-700 shadow-xl backdrop-blur-sm sm:left-6 lg:left-8">
+          <p className="text-[13px] font-bold text-slate-900">Risk legend</p>
+          <div className="mt-3 grid gap-2 text-[13px] font-medium">
+            {Object.values(riskLevels).map((risk) => (
+              <div key={risk.label} className="flex items-center gap-2">
+                <span
+                  className="h-3 w-3 rounded-sm"
+                  style={{ backgroundColor: risk.color }}
+                />
+                <span>{t(`risk.${risk.label}`)}</span>
+              </div>
+            ))}
+            <div className="flex items-center gap-2">
+              <span className="h-3 w-3 rounded-full bg-red-600" />
+              <span>FFWC station</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="grid h-5 w-5 place-items-center rounded-full bg-amber-500 text-[11px] font-black text-white">
+                H
+              </span>
+              <span>Help request</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="map-legend-shelter-icon grid h-5 w-5 place-items-center rounded-full bg-emerald-600 text-white">
+                <ShelterGlyph />
+              </span>
+              <span>Safe shelter</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="grid h-5 w-5 place-items-center rounded-full bg-violet-600 text-[11px] font-black text-white">
+                N
+              </span>
+              <span>NGO team</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="grid h-5 w-5 place-items-center rounded-full bg-blue-600 text-[11px] font-black text-white">
+                V
+              </span>
+              <span>Volunteer</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="absolute bottom-4 right-4 z-[540] grid overflow-hidden rounded-lg border border-white/[0.08] bg-[#343b3b]/90 shadow-2xl shadow-black/35 backdrop-blur-md sm:right-6 lg:right-[21rem]">
+          <button aria-label="Zoom in" className="h-8 w-8 border-b border-white/10 text-2xl font-light text-white transition hover:bg-white/[0.08]" onClick={() => mapRef.current?.zoomIn()} type="button">
+            +
+          </button>
+          <button aria-label="Zoom out" className="h-8 w-8 text-2xl font-light text-white transition hover:bg-white/[0.08]" onClick={() => mapRef.current?.zoomOut()} type="button">
+            -
+          </button>
+        </div>
       </main>
 
       <footer className="border-t border-white/[0.06] bg-[#080d0d]">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-7 text-sm font-bold text-slate-400 sm:px-8 md:flex-row md:items-center md:justify-between">
+        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-3 text-[8px] font-medium text-slate-400 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
+          <p>Copyright (c) 2026 ReliefOps Bangladesh</p>
           <p className="flex items-center gap-3">
-            <img alt="" className="h-5 w-5" src="/reliefops-icon.svg" />
-            ReliefOps Bangladesh
+            <span className="h-2 w-2 rounded-full bg-[#75ffd1]" />
+            {isConnected ? 'Real-time Satellite Feed Active' : 'Offline Feed Active'}
           </p>
-          <p>Copyright (c) 2026 belongs to washique234@gmail.com</p>
-          <p>Contact: 01920065926</p>
-          <p className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-full bg-emerald-300" />
-            Systems Operational
-          </p>
+          <div className="flex flex-wrap gap-8">
+            <Link className="hover:text-white" to="/alerts">Data Protocol</Link>
+            <Link className="hover:text-white" to="/alerts">API Access</Link>
+            <Link className="hover:text-white" to="/alerts">Support</Link>
+          </div>
         </div>
       </footer>
     </div>

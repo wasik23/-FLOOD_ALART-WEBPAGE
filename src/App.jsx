@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { ROLE_HOME_PATHS, ROLES } from './auth/roles.js'
 import { useAuth } from './auth/useAuth.js'
 import AppLayout from './components/AppLayout.jsx'
+import GlobalWebsiteAlert from './components/GlobalWebsiteAlert.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import AdminDashboard from './pages/AdminDashboard.jsx'
 import AuthForm from './pages/AuthForm.jsx'
@@ -26,65 +27,68 @@ function RoleHomeRedirect() {
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/login" element={<AuthForm mode="login" role={ROLES.VOLUNTEER} />} />
-      <Route path="/register" element={<AuthForm mode="register" role={ROLES.VOLUNTEER} />} />
-      <Route path="/ngo" element={<AuthForm mode="login" role={ROLES.NGO} />} />
-      <Route path="/admin" element={<AuthForm mode="login" role={ROLES.ADMIN} />} />
-      <Route path="/alerts" element={<GetAlerts />} />
-      <Route path="/donate" element={<DonationPage />} />
-      <Route path="/map" element={<MapPage />} />
-      <Route path="/request-help" element={<HelpRequestPage />} />
+    <>
+      <GlobalWebsiteAlert />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<AuthForm mode="login" role={ROLES.VOLUNTEER} />} />
+        <Route path="/register" element={<AuthForm mode="register" role={ROLES.VOLUNTEER} />} />
+        <Route path="/ngo" element={<AuthForm mode="login" role={ROLES.NGO} />} />
+        <Route path="/admin" element={<AuthForm mode="login" role={ROLES.ADMIN} />} />
+        <Route path="/alerts" element={<GetAlerts />} />
+        <Route path="/donate" element={<DonationPage />} />
+        <Route path="/map" element={<MapPage />} />
+        <Route path="/request-help" element={<HelpRequestPage />} />
 
-      <Route element={<ProtectedRoute />}>
-        <Route element={<AppLayout />}>
-          <Route path="/shelters" element={<Shelters />} />
-          <Route path="/unauthorized" element={<Unauthorized />} />
+        <Route element={<ProtectedRoute />}>
+          <Route element={<AppLayout />}>
+            <Route path="/shelters" element={<Shelters />} />
+            <Route path="/unauthorized" element={<Unauthorized />} />
+          </Route>
         </Route>
-      </Route>
 
-      <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN]} />}>
-        <Route element={<AppLayout />}>
-          <Route path="/dashboard" element={<Dashboard />} />
+        <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN]} />}>
+          <Route element={<AppLayout />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+          </Route>
         </Route>
-      </Route>
 
-      <Route element={<ProtectedRoute allowedRoles={[ROLES.VOLUNTEER]} />}>
-        <Route element={<AppLayout />}>
-          <Route path="/volunteer" element={<VolunteerCoordination />} />
+        <Route element={<ProtectedRoute allowedRoles={[ROLES.VOLUNTEER]} />}>
+          <Route element={<AppLayout />}>
+            <Route path="/volunteer" element={<VolunteerCoordination />} />
+          </Route>
         </Route>
-      </Route>
 
-      <Route element={<ProtectedRoute allowedRoles={[ROLES.NGO]} />}>
-        <Route element={<AppLayout />}>
-          <Route path="/coordinator" element={<CoordinatorDashboard />} />
+        <Route element={<ProtectedRoute allowedRoles={[ROLES.NGO]} />}>
+          <Route element={<AppLayout />}>
+            <Route path="/coordinator" element={<CoordinatorDashboard />} />
+          </Route>
         </Route>
-      </Route>
 
-      <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN]} />}>
-        <Route element={<AppLayout />}>
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN]} />}>
+          <Route element={<AppLayout />}>
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          </Route>
         </Route>
-      </Route>
 
-      <Route
-        element={<ProtectedRoute allowedRoles={[ROLES.NGO, ROLES.ADMIN]} />}
-      >
-        <Route element={<AppLayout />}>
-          <Route path="/records" element={<RecordsPage />} />
-          <Route path="/situation-report" element={<SituationReport />} />
+        <Route
+          element={<ProtectedRoute allowedRoles={[ROLES.NGO, ROLES.ADMIN]} />}
+        >
+          <Route element={<AppLayout />}>
+            <Route path="/records" element={<RecordsPage />} />
+            <Route path="/situation-report" element={<SituationReport />} />
+          </Route>
         </Route>
-      </Route>
 
-      <Route element={<ProtectedRoute />}>
-        <Route element={<AppLayout />}>
-          <Route path="/home" element={<RoleHomeRedirect />} />
+        <Route element={<ProtectedRoute />}>
+          <Route element={<AppLayout />}>
+            <Route path="/home" element={<RoleHomeRedirect />} />
+          </Route>
         </Route>
-      </Route>
 
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
   )
 }
 
