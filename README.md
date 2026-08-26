@@ -21,6 +21,14 @@ npm run dev
 
 The frontend runs with Vite. The optional backend is in `server/` and provides REST, Socket.IO, auth, SMS subscription, and database-backed relief operations APIs.
 
+## Emergency Alert Test
+
+Open this URL while the frontend is running to preview a critical flood alert for Kurigram:
+
+[Critical flood alert test](http://localhost:5173/?emergency=critical&district=Kurigram&level=8.9%20m)
+
+Click once on the page to enable the alert sound.
+
 ## Demo Access
 
 The current frontend still uses local demo authentication while backend integration is completed.
