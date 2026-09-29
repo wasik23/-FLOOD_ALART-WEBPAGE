@@ -184,8 +184,11 @@ const copyPropType = PropTypes.shape({
     }).isRequired,
   }).isRequired,
   hero: PropTypes.shape({
+    alert: PropTypes.string.isRequired,
+    body: PropTypes.string.isRequired,
     donate: PropTypes.string.isRequired,
     request: PropTypes.string.isRequired,
+    title: PropTypes.string.isRequired,
     volunteer: PropTypes.string.isRequired,
   }).isRequired,
   nav: PropTypes.shape({
