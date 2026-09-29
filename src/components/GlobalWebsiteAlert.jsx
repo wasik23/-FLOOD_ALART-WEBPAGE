@@ -215,29 +215,24 @@ function GlobalWebsiteAlert() {
     [stopAlarm],
   )
 
-  const armAlarm = useCallback(async () => {
+  const armAlarm = useCallback(async (event) => {
+    if (event?.type === 'pointerdown' && event.button !== 0) return
     if (alarmArmedRef.current) return
 
     alarmArmedRef.current = true
 
-    try {
-      const controller = createAlarmController('High')
-      window.setTimeout(() => controller?.stop(), 260)
-    } catch {
-      // The visual alert and browser notification can still work without audio.
+    // Start a real active-alert alarm before any permission prompt can end the user gesture.
+    if (activeAlertRef.current) {
+      startAlarm(activeAlertRef.current.severity)
     }
 
     if ('Notification' in window && Notification.permission === 'default') {
       await Notification.requestPermission()
     }
-
-    if (activeAlertRef.current) {
-      startAlarm(activeAlertRef.current.severity)
-    }
   }, [startAlarm])
 
   useEffect(() => {
-    const options = { once: true, passive: true }
+    const options = { passive: true }
     window.addEventListener('pointerdown', armAlarm, options)
     window.addEventListener('keydown', armAlarm, { once: true })
 
