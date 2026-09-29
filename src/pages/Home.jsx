@@ -1,8 +1,54 @@
 import { Link } from 'react-router-dom'
 import PropTypes from 'prop-types'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getLiveWaterLevels } from '../services/ffwc.js'
+
+function ScrollReveal({ as: Element = 'div', children, className = '', delay = 0, style, ...props }) {
+  const elementRef = useRef(null)
+  const [isVisible, setIsVisible] = useState(false)
+
+  useEffect(() => {
+    const element = elementRef.current
+    if (!element) return undefined
+
+    const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    if (prefersReducedMotion || !('IntersectionObserver' in window)) {
+      setIsVisible(true)
+      return undefined
+    }
+
+    // Stop observing after entry so content does not replay on every scroll pass.
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setIsVisible(true)
+        observer.unobserve(element)
+      }
+    }, { rootMargin: '0px 0px -32px 0px', threshold: 0.08 })
+
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <Element
+      {...props}
+      className={['scroll-reveal', isVisible ? 'is-visible' : '', className].filter(Boolean).join(' ')}
+      ref={elementRef}
+      style={{ ...style, '--scroll-reveal-delay': `${delay}ms` }}
+    >
+      {children}
+    </Element>
+  )
+}
+
+ScrollReveal.propTypes = {
+  as: PropTypes.elementType,
+  children: PropTypes.node.isRequired,
+  className: PropTypes.string,
+  delay: PropTypes.number,
+  style: PropTypes.object,
+}
 
 const riskStyles = {
   Low: {
@@ -36,19 +82,61 @@ const riskStyles = {
 }
 
 function parseWaterLevel(value) {
-  const parsed = Number.parseFloat(String(value || '').replace(/[^\d.-]/g, ''))
+  const bengaliDigits = '০১২৩৪৫৬৭৮৯'
+  const normalized = String(value || '').replace(/[০-৯]/g, (digit) =>
+    String(bengaliDigits.indexOf(digit)),
+  )
+  const parsed = Number.parseFloat(normalized.replace(/[^\d.-]/g, ''))
   return Number.isFinite(parsed) ? parsed : null
 }
 
+function getDangerPosition(item) {
+  const level = parseWaterLevel(item.level)
+  const dangerLevel = parseWaterLevel(item.dangerLevel)
+
+  if (level === null || dangerLevel === null) return 'unknown'
+  if (level > dangerLevel) return 'above'
+  if (level < dangerLevel) return 'below'
+  return 'at'
+}
+
 function getWaterSafety(item) {
+  const position = getDangerPosition(item)
+  if (position === 'above' || position === 'at') return 'danger'
+  if (position === 'below') return 'safe'
+
+  return item.risk === 'Critical' || item.risk === 'High' ? 'danger' : 'safe'
+}
+
+function getDangerSummary(item) {
   const level = parseWaterLevel(item.level)
   const dangerLevel = parseWaterLevel(item.dangerLevel)
 
   if (level === null || dangerLevel === null) {
-    return item.risk === 'Critical' || item.risk === 'High' ? 'danger' : 'safe'
+    return item.risk
+      ? `${item.risk} risk · danger threshold unavailable`
+      : 'Danger threshold unavailable'
   }
 
-  return level >= dangerLevel ? 'danger' : 'safe'
+  const difference = Math.abs(level - dangerLevel).toFixed(2)
+  const threshold = item.dangerLevel
+  const unit = String(item.level).includes('মি') ? 'মি' : 'm'
+  const position = getDangerPosition(item)
+
+  if (position === 'above') return `${difference} ${unit} above danger level (${threshold})`
+  if (position === 'below') return `${difference} ${unit} below danger level (${threshold})`
+  return `At danger level (${threshold})`
+}
+
+const riskWeight = { Critical: 4, High: 3, Medium: 2, Low: 1 }
+
+function compareForecastCards(first, second) {
+  const safetyDifference =
+    Number(getWaterSafety(second) === 'danger') -
+    Number(getWaterSafety(first) === 'danger')
+  if (safetyDifference) return safetyDifference
+
+  return (riskWeight[second.risk] || 0) - (riskWeight[first.risk] || 0)
 }
 
 const copyPropType = PropTypes.shape({
@@ -61,7 +149,39 @@ const copyPropType = PropTypes.shape({
   }).isRequired,
   forecast: PropTypes.shape({
     alerts: PropTypes.string.isRequired,
+    showAll: PropTypes.string.isRequired,
     title: PropTypes.string.isRequired,
+    sourceNote: PropTypes.string.isRequired,
+    fallbackNote: PropTypes.string.isRequired,
+    liveFeed: PropTypes.string.isRequired,
+    telemetryTitle: PropTypes.string.isRequired,
+    table: PropTypes.shape({
+      action: PropTypes.string.isRequired,
+      all: PropTypes.string.isRequired,
+      analyze: PropTypes.string.isRequired,
+      atDanger: PropTypes.string.isRequired,
+      aboveDanger: PropTypes.string.isRequired,
+      belowDanger: PropTypes.string.isRequired,
+      filter: PropTypes.string.isRequired,
+      model: PropTypes.string.isRequired,
+      noForecast: PropTypes.string.isRequired,
+      noResults: PropTypes.string.isRequired,
+      matching: PropTypes.string.isRequired,
+      next: PropTypes.string.isRequired,
+      observed: PropTypes.string.isRequired,
+      of: PropTypes.string.isRequired,
+      previous: PropTypes.string.isRequired,
+      river: PropTypes.string.isRequired,
+      search: PropTypes.string.isRequired,
+      showForecast: PropTypes.string.isRequired,
+      showing: PropTypes.string.isRequired,
+      station: PropTypes.string.isRequired,
+      stations: PropTypes.string.isRequired,
+      status: PropTypes.string.isRequired,
+      thresholdUnavailable: PropTypes.string.isRequired,
+      trend: PropTypes.string.isRequired,
+      waterLevel: PropTypes.string.isRequired,
+    }).isRequired,
   }).isRequired,
   hero: PropTypes.shape({
     donate: PropTypes.string.isRequired,
@@ -78,6 +198,8 @@ const copyPropType = PropTypes.shape({
   news: PropTypes.shape({
     eyebrow: PropTypes.string.isRequired,
     title: PropTypes.string.isRequired,
+    liveEyebrow: PropTypes.string.isRequired,
+    liveTitle: PropTypes.string.isRequired,
   }).isRequired,
 })
 
@@ -85,6 +207,12 @@ const forecastCardPropType = PropTypes.shape({
   area: PropTypes.string,
   dangerLevel: PropTypes.string,
   district: PropTypes.string,
+  forecastLevels: PropTypes.arrayOf(
+    PropTypes.shape({
+      date: PropTypes.string.isRequired,
+      value: PropTypes.number,
+    }),
+  ),
   level: PropTypes.string.isRequired,
   observedAt: PropTypes.string,
   risk: PropTypes.string,
@@ -148,9 +276,43 @@ const landingCopy = {
       eyebrow: 'Water level forecast',
       title: 'Area-wise flood risk outlook',
       alerts: 'Get SMS alerts',
+      showAll: 'Browse all stations',
+      sourceNote: 'Latest field observations from FFWC at 06:00 Bangladesh time; readings may update once daily.',
+      fallbackNote: 'Sample readings and danger thresholds are for display only; live FFWC data is unavailable.',
+      liveFeed: 'Latest FFWC field observations',
+      telemetryTitle: 'Latest FFWC water levels',
+      table: {
+        action: 'Action',
+        all: 'All stations',
+        analyze: 'Analyze',
+        atDanger: 'At danger level',
+        aboveDanger: 'Above danger',
+        belowDanger: 'Below danger',
+        filter: 'Filter by danger status',
+        model: 'Model',
+        noForecast: 'No forecast data',
+        noResults: 'No stations match these filters.',
+        matching: 'matching stations',
+        next: 'Next',
+        observed: 'Observed at',
+        of: 'of',
+        previous: 'Previous',
+        river: 'River',
+        search: 'Search station, area, or river',
+        showForecast: '5-day forecast',
+        showing: 'Showing',
+        station: 'Station',
+        stations: 'stations',
+        status: 'Danger status',
+        thresholdUnavailable: 'Threshold unavailable',
+        trend: 'Trend',
+        waterLevel: 'Water level',
+      },
     },
     news: {
       eyebrow: 'Flood news',
+      liveEyebrow: 'Latest FFWC readings',
+      liveTitle: 'Latest water-level situation',
       title: 'Latest response updates',
     },
     contact: {
@@ -172,6 +334,7 @@ const landingCopy = {
         area: 'Sylhet Sadar',
         river: 'Surma',
         level: '13.8 m',
+        dangerLevel: '13.0 mMSL',
         trend: 'Rising',
         risk: 'Critical',
         forecast: 'May cross danger level within 12 hours.',
@@ -180,6 +343,7 @@ const landingCopy = {
         area: 'Sunamganj',
         river: 'Kushiyara',
         level: '12.4 m',
+        dangerLevel: '11.8 mMSL',
         trend: 'Rising',
         risk: 'High',
         forecast: 'Low-lying unions should prepare evacuation support.',
@@ -188,6 +352,7 @@ const landingCopy = {
         area: 'Kurigram',
         river: 'Brahmaputra',
         level: '19.2 m',
+        dangerLevel: '20.0 mMSL',
         trend: 'Stable',
         risk: 'Medium',
         forecast: 'Char areas may remain waterlogged through tomorrow.',
@@ -196,9 +361,46 @@ const landingCopy = {
         area: 'Feni',
         river: 'Muhuri',
         level: '8.7 m',
+        dangerLevel: '9.5 mMSL',
         trend: 'Falling',
         risk: 'Low',
         forecast: 'Road access is improving; continue monitoring embankments.',
+      },
+      {
+        area: 'Jamalpur',
+        river: 'Old Brahmaputra',
+        level: '6.1 m',
+        dangerLevel: '5.9 mMSL',
+        trend: 'Rising',
+        risk: 'High',
+        forecast: 'Water is nearing the danger mark; keep evacuation teams ready.',
+      },
+      {
+        area: 'Gaibandha',
+        river: 'Teesta',
+        level: '5.4 m',
+        dangerLevel: '5.3 mMSL',
+        trend: 'Rising',
+        risk: 'High',
+        forecast: 'Rising water may affect low-lying unions overnight.',
+      },
+      {
+        area: 'Bogra',
+        river: 'Jamuna',
+        level: '4.9 m',
+        dangerLevel: '5.1 mMSL',
+        trend: 'Stable',
+        risk: 'Medium',
+        forecast: 'Monitor embankments and keep relief routes clear.',
+      },
+      {
+        area: 'Chandpur',
+        river: 'Meghna',
+        level: '3.8 m',
+        dangerLevel: '4.0 mMSL',
+        trend: 'Falling',
+        risk: 'Low',
+        forecast: 'Levels are easing; continue checking riverbank areas.',
       },
     ],
     floodNews: [
@@ -252,9 +454,43 @@ const landingCopy = {
       eyebrow: 'পানির স্তরের পূর্বাভাস',
       title: 'এলাকাভিত্তিক বন্যা ঝুঁকির চিত্র',
       alerts: 'এসএমএস সতর্কতা নিন',
+      showAll: 'সব স্টেশন দেখুন',
+      sourceNote: 'এফএফডব্লিউসি-এর সকাল ৬টার সর্বশেষ মাঠপর্যায়ের পর্যবেক্ষণ; তথ্য দিনে একবার হালনাগাদ হতে পারে।',
+      fallbackNote: 'ডেমো পাঠ ও বিপদসীমা শুধু নমুনা; লাইভ এফএফডব্লিউসি তথ্য পাওয়া যাচ্ছে না।',
+      liveFeed: 'এফএফডব্লিউসি-এর সর্বশেষ পর্যবেক্ষণ',
+      telemetryTitle: 'এফএফডব্লিউসি-এর সর্বশেষ পানির স্তর',
+      table: {
+        action: 'কাজ',
+        all: 'সব স্টেশন',
+        analyze: 'বিশ্লেষণ',
+        atDanger: 'বিপদসীমায়',
+        aboveDanger: 'বিপদসীমার ওপরে',
+        belowDanger: 'বিপদসীমার নিচে',
+        filter: 'বিপদসীমা অনুযায়ী বাছাই',
+        model: 'মডেল',
+        noForecast: 'পূর্বাভাস নেই',
+        noResults: 'এই বাছাইয়ে কোনো স্টেশন পাওয়া যায়নি।',
+        matching: 'টি মিলে যাওয়া স্টেশন',
+        next: 'পরের পৃষ্ঠা',
+        observed: 'পর্যবেক্ষণের সময়',
+        of: 'এর মধ্যে',
+        previous: 'আগের পৃষ্ঠা',
+        river: 'নদী',
+        search: 'স্টেশন, এলাকা বা নদী খুঁজুন',
+        showForecast: '৫ দিনের পূর্বাভাস',
+        showing: 'দেখানো হচ্ছে',
+        station: 'স্টেশন',
+        stations: 'টি স্টেশন',
+        status: 'বিপদসীমার অবস্থা',
+        thresholdUnavailable: 'বিপদসীমার তথ্য নেই',
+        trend: 'ধারা',
+        waterLevel: 'পানির স্তর',
+      },
     },
     news: {
       eyebrow: 'বন্যার খবর',
+      liveEyebrow: 'এফএফডব্লিউসি-এর সর্বশেষ পাঠ',
+      liveTitle: 'পানির স্তরের সর্বশেষ পরিস্থিতি',
       title: 'সর্বশেষ সহায়তা আপডেট',
     },
     contact: {
@@ -276,6 +512,7 @@ const landingCopy = {
         area: 'সিলেট সদর',
         river: 'সুরমা',
         level: '১৩.৮ মি',
+        dangerLevel: '১৩.০ মিMSL',
         trend: 'বাড়ছে',
         risk: 'Critical',
         forecast: '১২ ঘণ্টার মধ্যে বিপদসীমা অতিক্রম করতে পারে।',
@@ -284,6 +521,7 @@ const landingCopy = {
         area: 'সুনামগঞ্জ',
         river: 'কুশিয়ারা',
         level: '১২.৪ মি',
+        dangerLevel: '১১.৮ মিMSL',
         trend: 'বাড়ছে',
         risk: 'High',
         forecast: 'নিম্নাঞ্চলের ইউনিয়নগুলোতে সরিয়ে নেওয়ার প্রস্তুতি দরকার।',
@@ -292,6 +530,7 @@ const landingCopy = {
         area: 'কুড়িগ্রাম',
         river: 'ব্রহ্মপুত্র',
         level: '১৯.২ মি',
+        dangerLevel: '২০.০ মিMSL',
         trend: 'স্থিতিশীল',
         risk: 'Medium',
         forecast: 'চর এলাকায় আগামীকাল পর্যন্ত জলাবদ্ধতা থাকতে পারে।',
@@ -300,9 +539,46 @@ const landingCopy = {
         area: 'ফেনী',
         river: 'মুহুরী',
         level: '৮.৭ মি',
+        dangerLevel: '৯.৫ মিMSL',
         trend: 'কমছে',
         risk: 'Low',
         forecast: 'সড়ক যোগাযোগ উন্নত হচ্ছে; বাঁধ পর্যবেক্ষণ চালিয়ে যান।',
+      },
+      {
+        area: 'জামালপুর',
+        river: 'পুরাতন ব্রহ্মপুত্র',
+        level: '৬.১ মি',
+        dangerLevel: '৫.৯ মিMSL',
+        trend: 'বাড়ছে',
+        risk: 'High',
+        forecast: 'পানি বিপদসীমার কাছাকাছি; সরিয়ে নেওয়ার দল প্রস্তুত রাখুন।',
+      },
+      {
+        area: 'গাইবান্ধা',
+        river: 'তিস্তা',
+        level: '৫.৪ মি',
+        dangerLevel: '৫.৩ মিMSL',
+        trend: 'বাড়ছে',
+        risk: 'High',
+        forecast: 'পানি বাড়লে রাতে নিম্নাঞ্চলের ইউনিয়ন প্লাবিত হতে পারে।',
+      },
+      {
+        area: 'বগুড়া',
+        river: 'যমুনা',
+        level: '৪.৯ মি',
+        dangerLevel: '৫.১ মিMSL',
+        trend: 'স্থিতিশীল',
+        risk: 'Medium',
+        forecast: 'বাঁধ পর্যবেক্ষণ করুন এবং ত্রাণপথ চলাচলের উপযোগী রাখুন।',
+      },
+      {
+        area: 'চাঁদপুর',
+        river: 'মেঘনা',
+        level: '৩.৮ মি',
+        dangerLevel: '৪.০ মিMSL',
+        trend: 'কমছে',
+        risk: 'Low',
+        forecast: 'পানির স্তর কমছে; নদীতীরবর্তী এলাকা পর্যবেক্ষণ চালিয়ে যান।',
       },
     ],
     floodNews: [
@@ -341,14 +617,15 @@ function Home() {
   const [waterDataStatus, setWaterDataStatus] = useState('loading')
   const language = i18n.language === 'bn-BD' ? 'bn-BD' : 'en'
   const copy = landingCopy[language]
-  const forecastCards = liveWaterData?.waterLevels?.length
-    ? liveWaterData.waterLevels.slice(0, 4)
+  const forecastCards = (liveWaterData?.waterLevels?.length
+    ? liveWaterData.waterLevels
     : copy.forecasts
+  ).slice().sort(compareForecastCards)
   const liveNewsCards = liveWaterData?.waterLevels?.length
     ? liveWaterData.waterLevels.slice(0, 3).map((item) => ({
         id: `ffwc-${item.id}`,
         title: `${item.station} station is ${item.trend.toLowerCase()}`,
-        area: item.district,
+        area: item.district || item.area || item.station,
         time: item.observedAt || liveWaterData.lastUpdated || 'Latest FFWC update',
         summary: `${item.forecast} Current level is ${item.level}, danger level is ${item.dangerLevel}, and risk is ${item.risk.toLowerCase()}.`,
       }))
@@ -619,8 +896,10 @@ function HeroSection({ copy, heroImageIndex }) {
 }
 
 function ForecastSection({ copy, forecastCards, waterDataStatus }) {
+  const visibleForecastCards = forecastCards.slice(0, 4)
+
   return (
-    <section className="bg-[#080d0d] py-16 text-slate-100" id="forecasts">
+    <ScrollReveal as="section" className="bg-[#080d0d] py-16 text-slate-100" id="forecasts">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <div className="mb-10 flex flex-col justify-between gap-4 md:flex-row md:items-end">
           <div>
@@ -628,7 +907,7 @@ function ForecastSection({ copy, forecastCards, waterDataStatus }) {
               {copy.forecast.title}
             </h2>
             <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-300">
-              Visualizing current river basins and danger levels across the country through precision telemetry.
+              {waterDataStatus === 'live' ? copy.forecast.sourceNote : copy.forecast.fallbackNote}
             </p>
           </div>
           <div className="inline-flex w-fit rounded-xl border border-white/10 bg-white/[0.08] p-1 text-xs font-bold">
@@ -639,8 +918,8 @@ function ForecastSection({ copy, forecastCards, waterDataStatus }) {
           </div>
         </div>
 
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-          {forecastCards.map((item, index) => {
+        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+          {visibleForecastCards.map((item, index) => {
             const risk = riskStyles[item.risk] || riskStyles.Medium
             const location = item.area || item.district || item.station
             const basin = item.station ? `${item.station} station` : `${item.river} basin`
@@ -648,7 +927,8 @@ function ForecastSection({ copy, forecastCards, waterDataStatus }) {
             const safety = getWaterSafety(item)
 
             return (
-              <article
+              <ScrollReveal
+                as="article"
                 className={[
                   'landing-risk-card rounded-3xl p-7 shadow-xl',
                   safety === 'danger'
@@ -656,7 +936,7 @@ function ForecastSection({ copy, forecastCards, waterDataStatus }) {
                     : 'border border-white/[0.07] bg-[#121818] shadow-black/20',
                 ].join(' ')}
                 key={`${location}-${item.river}-${index}`}
-                style={{ animationDelay: `${index * 90}ms` }}
+                delay={Math.min(index * 135, 405)}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -672,7 +952,7 @@ function ForecastSection({ copy, forecastCards, waterDataStatus }) {
                         ? risk.icon
                         : 'border-emerald-300/35 bg-emerald-300/15 text-emerald-200',
                     ].join(' ')}
-                    title={safety === 'danger' ? 'Danger level reached' : 'Below danger level'}
+                    title={getDangerSummary(item)}
                   >
                     <SafetyStatusIcon status={safety} />
                   </span>
@@ -685,7 +965,7 @@ function ForecastSection({ copy, forecastCards, waterDataStatus }) {
                   {item.level}
                 </p>
                 <p className={['mt-3 text-xs font-bold', safety === 'danger' ? 'text-red-100' : 'text-slate-300'].join(' ')}>
-                  {item.dangerLevel ? `${item.dangerLevel} danger level` : 'Above danger level'}
+                  {getDangerSummary(item)}
                 </p>
                 <div className={['mt-5 h-2 overflow-hidden rounded-full', safety === 'danger' ? 'bg-red-950/60' : 'bg-white/[0.05]'].join(' ')}>
                   <div className={`landing-risk-meter h-full rounded-full ${risk.meter}`} style={{ width: risk.width }} />
@@ -698,125 +978,314 @@ function ForecastSection({ copy, forecastCards, waterDataStatus }) {
                     {item.observedAt || (index === 0 ? 'Just now' : `${(index + 1) * 3}m ago`)}
                   </span>
                 </div>
-              </article>
+              </ScrollReveal>
             )
           })}
         </div>
 
-        <TelemetryTable forecastCards={forecastCards} waterDataStatus={waterDataStatus} />
+        {forecastCards.length > 4 ? (
+          <div className="mt-7 flex justify-center">
+            <a
+              className="landing-button inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-bold text-slate-200 hover:bg-white/[0.08]"
+              href="#telemetry"
+            >
+              {copy.forecast.showAll}
+              <span className="text-emerald-300">{forecastCards.length} {copy.forecast.table.stations}</span>
+            </a>
+          </div>
+        ) : null}
+
+        <TelemetryTable copy={copy} forecastCards={forecastCards} waterDataStatus={waterDataStatus} />
       </div>
-    </section>
+    </ScrollReveal>
   )
 }
 
-function TelemetryTable({ forecastCards, waterDataStatus }) {
+function TelemetryTable({ copy, forecastCards, waterDataStatus }) {
+  const labels = copy.forecast.table
+  const [search, setSearch] = useState('')
+  const [dangerFilter, setDangerFilter] = useState('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const rowsPerPage = 5
   const feedLabel = waterDataStatus === 'live'
-    ? 'Live system feed'
+    ? copy.forecast.liveFeed
     : waterDataStatus === 'loading'
       ? 'Loading feed'
       : 'Fallback feed'
+  const normalizedSearch = search.trim().toLowerCase()
+  const filteredStations = forecastCards.filter((item) => {
+    const position = getDangerPosition(item)
+    const matchesFilter = dangerFilter === 'all' || position === dangerFilter
+    const matchesSearch = !normalizedSearch ||
+      [item.station, item.area, item.district, item.river, item.basin]
+        .filter(Boolean)
+        .some((value) => value.toLowerCase().includes(normalizedSearch))
+
+    return matchesFilter && matchesSearch
+  })
+  const pageCount = Math.max(1, Math.ceil(filteredStations.length / rowsPerPage))
+  const page = Math.min(currentPage, pageCount)
+  const firstRow = filteredStations.length ? (page - 1) * rowsPerPage + 1 : 0
+  const lastRow = Math.min(page * rowsPerPage, filteredStations.length)
+  const pageStations = filteredStations.slice(firstRow - 1, lastRow)
 
   return (
-    <div className="landing-telemetry-panel mt-16 overflow-hidden rounded-3xl border border-white/[0.07] bg-[#121818] shadow-2xl shadow-black/25">
+    <ScrollReveal as="div" className="landing-telemetry-panel mt-16 overflow-hidden rounded-3xl border border-white/[0.07] bg-[#121818] shadow-2xl shadow-black/25" id="telemetry">
       <div className="flex flex-col justify-between gap-3 border-b border-white/[0.06] bg-white/[0.04] px-6 py-6 sm:flex-row sm:items-center">
-        <h3 className="text-xl font-black text-white">Live Sensor Telemetry</h3>
+        <div>
+          <h3 className="text-xl font-black text-white">{copy.forecast.telemetryTitle}</h3>
+          <p className="mt-2 text-xs text-slate-400">
+            {forecastCards.length} {labels.stations}
+          </p>
+        </div>
         <p className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.18em] text-emerald-300">
           <span className="landing-live-dot h-2 w-2 rounded-full bg-emerald-300" />
           {feedLabel}
         </p>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[680px] text-left">
+      <div className="flex flex-col gap-3 border-b border-white/[0.05] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <label className="sr-only" htmlFor="ffwc-station-search">{labels.search}</label>
+        <input
+          className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-emerald-300 sm:max-w-sm"
+          id="ffwc-station-search"
+          onChange={(event) => {
+            setSearch(event.target.value)
+            setCurrentPage(1)
+          }}
+          placeholder={labels.search}
+          type="search"
+          value={search}
+        />
+        <label className="sr-only" htmlFor="ffwc-danger-filter">{labels.filter}</label>
+        <select
+          className="w-full rounded-xl border border-white/10 bg-[#101616] px-4 py-3 text-sm text-slate-200 outline-none focus:border-emerald-300 sm:w-auto"
+          id="ffwc-danger-filter"
+          onChange={(event) => {
+            setDangerFilter(event.target.value)
+            setCurrentPage(1)
+          }}
+          value={dangerFilter}
+        >
+          <option value="all">{labels.all}</option>
+          <option value="above">{labels.aboveDanger}</option>
+          <option value="below">{labels.belowDanger}</option>
+          <option value="at">{labels.atDanger}</option>
+          <option value="unknown">{labels.thresholdUnavailable}</option>
+        </select>
+        <p className="shrink-0 text-xs text-slate-400">
+          {filteredStations.length} {labels.matching}
+        </p>
+      </div>
+      <div
+        aria-label={copy.forecast.telemetryTitle}
+        className="landing-telemetry-scroll overflow-x-auto"
+        role="region"
+        tabIndex={0}
+      >
+        <table className="w-full min-w-[980px] text-left">
           <thead className="border-b border-white/[0.05] text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
             <tr>
-              <th className="px-6 py-5">Station</th>
-              <th className="px-6 py-5">River</th>
-              <th className="px-6 py-5">Water Level</th>
-              <th className="px-6 py-5">Trend</th>
-              <th className="px-6 py-5 text-right">Action</th>
+              <th className="px-6 py-5">{labels.station}</th>
+              <th className="px-6 py-5">{labels.river}</th>
+              <th className="px-6 py-5">{labels.waterLevel}</th>
+              <th className="px-6 py-5">{labels.status}</th>
+              <th className="px-6 py-5">{labels.trend}</th>
+              <th className="px-6 py-5">{labels.model} · {labels.waterLevel}</th>
+              <th className="px-6 py-5">{labels.observed}</th>
+              <th className="px-6 py-5 text-right">{labels.action}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/[0.04]">
-            {forecastCards.slice(0, 3).map((item, index) => {
+            {pageStations.map((item, index) => {
               const risk = riskStyles[item.risk] || riskStyles.Medium
               const station = item.station || item.area || item.district
+              const position = getDangerPosition(item)
+              const positionLabel = position === 'above'
+                ? labels.aboveDanger
+                : position === 'below'
+                  ? labels.belowDanger
+                  : position === 'at'
+                    ? labels.atDanger
+                    : labels.thresholdUnavailable
+              const positionColor = position === 'above' || position === 'at'
+                ? 'bg-red-500/15 text-red-200'
+                : position === 'below'
+                  ? 'bg-emerald-400/10 text-emerald-200'
+                  : 'bg-white/[0.08] text-slate-300'
 
               return (
-                <tr
+                <ScrollReveal
+                  as="tr"
                   className="landing-telemetry-row"
                   key={`${station}-${item.level}-${index}`}
-                  style={{ animationDelay: `${220 + index * 90}ms` }}
+                  delay={Math.min(index * 55, 220)}
                 >
-                  <td className="px-6 py-6 text-sm font-extrabold text-white">{station}</td>
-                  <td className="px-6 py-6 text-sm text-slate-300">{item.river}</td>
-                  <td className="px-6 py-6">
-                    <span className="text-2xl font-black text-emerald-300">{item.level}</span>
-                    {item.dangerLevel ? (
-                      <span className="ml-2 text-xs text-slate-500">/ {item.dangerLevel} Danger</span>
+                  <td className="px-6 py-5 text-sm font-extrabold text-white">
+                    {station}
+                    {item.area && item.area !== station ? (
+                      <span className="mt-1 block text-xs font-normal text-slate-500">{item.area}</span>
                     ) : null}
                   </td>
-                  <td className="px-6 py-6">
+                  <td className="px-6 py-5 text-sm text-slate-300">
+                    {item.river}
+                    {item.basin ? (
+                      <span className="mt-1 block text-xs text-slate-500">{item.basin}</span>
+                    ) : null}
+                  </td>
+                  <td className="px-6 py-5">
+                    <span className="text-lg font-black text-emerald-300">{item.level}</span>
+                    {item.dangerLevel ? (
+                      <span className="mt-1 block text-xs text-slate-500">Danger: {item.dangerLevel}</span>
+                    ) : null}
+                  </td>
+                  <td className="px-6 py-5">
+                    <span className={`rounded-full px-3 py-1 text-[10px] font-extrabold ${positionColor}`}>
+                      {positionLabel}
+                    </span>
+                    <span className="mt-2 block text-xs text-slate-500">{getDangerSummary(item)}</span>
+                  </td>
+                  <td className="px-6 py-5">
                     <span className={`rounded-full px-3 py-1 text-[10px] font-extrabold ${risk.badge}`}>
                       {item.trend || risk.status}
                     </span>
                   </td>
-                  <td className="px-6 py-6 text-right">
+                  <td className="px-6 py-5">
+                    {item.forecastLevels?.some((forecast) => Number.isFinite(forecast.value)) ? (
+                      <details className="min-w-36">
+                        <summary className="cursor-pointer text-sm font-bold text-cyan-200">
+                          {labels.showForecast}
+                        </summary>
+                        <div className="mt-3 grid gap-2">
+                          {item.forecastLevels.map((forecast) => {
+                            const forecastAboveDanger =
+                              Number.isFinite(forecast.value) &&
+                              forecast.value >= parseWaterLevel(item.dangerLevel)
+
+                            return (
+                              <p
+                                className={`flex justify-between gap-3 text-xs ${forecastAboveDanger ? 'text-red-200' : 'text-slate-300'}`}
+                                key={forecast.date}
+                              >
+                                <span>{forecast.date}</span>
+                                <span className="font-bold">
+                                  {Number.isFinite(forecast.value)
+                                    ? `${forecast.value.toFixed(2)} mMSL`
+                                    : labels.noForecast}
+                                </span>
+                              </p>
+                            )
+                          })}
+                        </div>
+                      </details>
+                    ) : (
+                      <span className="text-xs text-slate-500">{labels.noForecast}</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-5 text-xs text-slate-400">{item.observedAt || '—'}</td>
+                  <td className="px-6 py-5 text-right">
                     <Link className="text-xs font-extrabold text-emerald-300 hover:text-emerald-100" to="/map">
-                      Analyze
+                      {labels.analyze}
                     </Link>
                   </td>
-                </tr>
+                </ScrollReveal>
               )
             })}
+            {!pageStations.length ? (
+              <tr>
+                <td className="px-6 py-12 text-center text-sm text-slate-400" colSpan={8}>
+                  {labels.noResults}
+                </td>
+              </tr>
+            ) : null}
           </tbody>
         </table>
       </div>
-    </div>
+      <div className="flex flex-col gap-3 border-t border-white/[0.05] px-4 py-4 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <p className="text-xs text-slate-400">
+          {labels.showing} {firstRow}–{lastRow} {labels.of} {filteredStations.length}
+        </p>
+        <div className="flex items-center gap-3">
+          <button
+            className="landing-button rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+            disabled={page <= 1}
+            onClick={() => setCurrentPage(page - 1)}
+            type="button"
+          >
+            {labels.previous}
+          </button>
+          <span className="text-xs text-slate-400">{page} / {pageCount}</span>
+          <button
+            className="landing-button rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+            disabled={page >= pageCount}
+            onClick={() => setCurrentPage(page + 1)}
+            type="button"
+          >
+            {labels.next}
+          </button>
+        </div>
+      </div>
+    </ScrollReveal>
   )
 }
 
 function NewsSection({ copy, liveNewsCards, waterDataStatus }) {
+  const renderNewsGroup = (isDuplicate) => (
+    <div
+      aria-hidden={isDuplicate}
+      className={isDuplicate ? 'flood-news-group flood-news-group-duplicate' : 'flood-news-group'}
+      key={isDuplicate ? 'duplicate' : 'primary'}
+    >
+      {liveNewsCards.map((item) => (
+        <article className="flood-news-card" key={item.id}>
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-emerald-300">
+            {item.area} <span aria-hidden="true">/</span> {item.time}
+          </p>
+          <h3 className="mt-3 text-lg font-black leading-6 text-white">
+            {item.title}
+          </h3>
+          <p className="mt-2 text-sm leading-5 text-slate-300">
+            {item.summary}
+          </p>
+        </article>
+      ))}
+    </div>
+  )
+
   return (
-    <section className="border-t border-white/[0.04] bg-[#080d0d] py-16" id="news">
+    <ScrollReveal as="section" className="border-t border-white/[0.04] bg-[#080d0d] py-16" id="news">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col justify-between gap-3 md:flex-row md:items-end">
           <div>
             <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-emerald-300">
-              {waterDataStatus === 'live' ? 'Live FFWC updates' : copy.news.eyebrow}
+              {waterDataStatus === 'live' ? copy.news.liveEyebrow : copy.news.eyebrow}
             </p>
             <h2 className="mt-3 text-3xl font-black text-white">
-              {waterDataStatus === 'live'
-                ? 'Latest water-level situation'
-                : copy.news.title}
+              {waterDataStatus === 'live' ? copy.news.liveTitle : copy.news.title}
             </h2>
           </div>
           <Link className="landing-button w-fit rounded-lg border border-white/10 px-5 py-3 text-sm font-bold text-slate-200 hover:bg-white/[0.06]" to="/alerts">
             View Alerts
           </Link>
         </div>
-        <div className="mt-8 grid gap-5 md:grid-cols-3">
-          {liveNewsCards.map((item) => (
-            <article className="rounded-3xl border border-white/[0.07] bg-[#121818] p-6 shadow-xl shadow-black/20" key={item.id}>
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-emerald-300">
-                {item.area} / {item.time}
-              </p>
-              <h3 className="mt-4 text-xl font-black leading-7 text-white">
-                {item.title}
-              </h3>
-              <p className="mt-4 text-sm leading-6 text-slate-300">
-                {item.summary}
-              </p>
-            </article>
-          ))}
+        <div
+          aria-label={copy.news.eyebrow}
+          className="flood-news-marquee mt-8"
+          role="region"
+          tabIndex={0}
+        >
+          <div className="flood-news-track">
+            {renderNewsGroup(false)}
+            {renderNewsGroup(true)}
+          </div>
         </div>
       </div>
-    </section>
+    </ScrollReveal>
   )
 }
 
 function ContactSection({ copy }) {
   return (
-    <section className="border-t border-white/[0.04] bg-[#0b1111] py-16" id="contact">
+    <ScrollReveal as="section" className="border-t border-white/[0.04] bg-[#0b1111] py-16" id="contact">
       <div className="mx-auto grid max-w-6xl gap-8 px-4 sm:px-6 md:grid-cols-[minmax(0,1fr)_minmax(280px,420px)] lg:px-8">
         <div>
           <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-emerald-300">
@@ -836,7 +1305,7 @@ function ContactSection({ copy }) {
           </a>
         </div>
       </div>
-    </section>
+    </ScrollReveal>
   )
 }
 
@@ -942,6 +1411,7 @@ ForecastSection.propTypes = {
 }
 
 TelemetryTable.propTypes = {
+  copy: copyPropType.isRequired,
   forecastCards: PropTypes.arrayOf(forecastCardPropType).isRequired,
   waterDataStatus: PropTypes.string.isRequired,
 }

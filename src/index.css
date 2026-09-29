@@ -157,7 +157,6 @@ body {
   }
 
   .landing-risk-card {
-    animation: landing-card-rise 0.7s ease both;
     transition:
       border-color 0.25s ease,
       box-shadow 0.25s ease,
@@ -173,21 +172,18 @@ body {
   }
 
   .landing-risk-icon {
-    animation: landing-soft-pulse 2.2s ease-in-out infinite;
+    animation: none;
   }
 
   .landing-risk-meter {
-    animation: landing-meter-fill 1s ease-out both;
     transform-origin: left;
   }
 
   .landing-telemetry-panel {
-    animation: landing-card-rise 0.75s ease both;
-    animation-delay: 0.16s;
+    animation: none;
   }
 
   .landing-telemetry-row {
-    animation: landing-row-fade 0.55s ease both;
     transition: background-color 0.2s ease, transform 0.2s ease;
   }
 
@@ -399,6 +395,38 @@ input.form-input {
   }
 }
 
+.scroll-reveal {
+  opacity: 0;
+  translate: 0 1rem;
+  transition:
+    opacity 850ms ease,
+    translate 850ms cubic-bezier(0.2, 0.75, 0.25, 1);
+  transition-delay: var(--scroll-reveal-delay, 0ms);
+}
+
+.scroll-reveal.is-visible {
+  opacity: 1;
+  translate: 0 0;
+}
+
+.scroll-reveal.is-visible .landing-risk-icon {
+  animation: landing-soft-pulse 2.2s ease-in-out infinite;
+}
+
+.scroll-reveal.is-visible .landing-risk-meter {
+  animation: landing-meter-fill 1s ease-out both;
+  transform-origin: left;
+}
+
+.landing-telemetry-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.landing-telemetry-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .landing-button,
   .landing-button-primary,
@@ -414,7 +442,87 @@ input.form-input {
     transition: none;
   }
 
+  .scroll-reveal,
+  .scroll-reveal.is-visible {
+    opacity: 1;
+    translate: 0 0;
+    transition: none;
+  }
+
+  .scroll-reveal.is-visible .landing-risk-icon,
+  .scroll-reveal.is-visible .landing-risk-meter {
+    animation: none;
+  }
+
   .landing-button:hover {
     transform: none;
+  }
+}
+
+
+.flood-news-marquee {
+  overflow: hidden;
+}
+
+.flood-news-marquee:focus-visible {
+  outline: 2px solid #6ee7b7;
+  outline-offset: 4px;
+}
+
+.flood-news-track {
+  display: flex;
+  width: max-content;
+  animation: flood-news-scroll 36s linear infinite;
+  will-change: transform;
+}
+
+.flood-news-group {
+  display: flex;
+  flex: none;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.flood-news-card {
+  display: flex;
+  flex: 0 0 min(84vw, 420px);
+  flex-direction: column;
+  justify-content: center;
+  min-height: 148px;
+  padding: 1.25rem;
+  border: 1px solid rgb(255 255 255 / 0.07);
+  border-radius: 1rem;
+  background: rgb(255 255 255 / 0.035);
+}
+
+.flood-news-marquee:hover .flood-news-track,
+.flood-news-marquee:focus-within .flood-news-track {
+  animation-play-state: paused;
+}
+
+@keyframes flood-news-scroll {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flood-news-track {
+    width: 100%;
+    animation: none;
+  }
+
+  .flood-news-group {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .flood-news-card {
+    flex: 1 1 260px;
+  }
+
+  .flood-news-group-duplicate {
+    display: none;
   }
 }
