@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { ROLE_HOME_PATHS, ROLES } from './auth/roles.js'
 import { useAuth } from './auth/useAuth.js'
 import AppLayout from './components/AppLayout.jsx'
+import AppIntro from './components/AppIntro.jsx'
 import GlobalWebsiteAlert from './components/GlobalWebsiteAlert.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import AdminDashboard from './pages/AdminDashboard.jsx'
@@ -28,6 +29,7 @@ function RoleHomeRedirect() {
 function App() {
   return (
     <>
+      <AppIntro />
       <GlobalWebsiteAlert />
       <Routes>
         <Route path="/" element={<Home />} />

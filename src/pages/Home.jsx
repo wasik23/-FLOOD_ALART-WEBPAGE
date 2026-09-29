@@ -264,6 +264,7 @@ const landingCopy = {
     },
     hero: {
       eyebrow: 'Bangladesh flood relief',
+      alert: 'Critical alert: northern region',
       title: 'Fast help for people facing flood emergencies.',
       body:
         'Public users can view alerts, forecasts, donation details, and contact information without registration.',
@@ -442,6 +443,7 @@ const landingCopy = {
     },
     hero: {
       eyebrow: 'বাংলাদেশ বন্যা সহায়তা',
+      alert: 'উত্তরাঞ্চলে জরুরি বন্যা সতর্কতা',
       title: 'বন্যা জরুরি অবস্থায় মানুষের পাশে দ্রুত সহায়তা।',
       body:
         'সাধারণ ব্যবহারকারীরা নিবন্ধন ছাড়াই সতর্কতা, পূর্বাভাস, অনুদানের তথ্য ও যোগাযোগ দেখতে পারবেন। মাঠকাজে যোগ দিতে স্বেচ্ছাসেবকদের আগে নিবন্ধন করতে হবে।',
@@ -837,13 +839,13 @@ function HeroSection({ copy, heroImageIndex }) {
         <div>
           <p className="inline-flex items-center gap-2 rounded-full border border-red-200/45 bg-red-600/25 px-3 py-2 text-xs font-black uppercase tracking-normal text-white shadow-lg shadow-red-950/35">
             <span className="h-2 w-2 rounded-full bg-red-100 shadow-[0_0_14px_rgb(254_202_202/0.9)]" />
-            Critical alert: northern region
+            {copy.hero.alert}
           </p>
           <h1 className="mt-7 max-w-xl text-5xl font-black leading-[0.98] text-slate-100 sm:text-6xl">
-            Fast <span className="text-emerald-300">help</span> for people facing flood emergencies.
+            {copy.hero.title}
           </h1>
           <p className="mt-6 max-w-xl text-base leading-7 text-slate-300">
-            Real-time risk monitoring and emergency response coordination. We bridge the gap between distress and relief using live telemetry and community networks.
+            {copy.hero.body}
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link className="landing-button landing-button-primary rounded-lg bg-emerald-300 px-8 py-4 text-sm font-extrabold text-[#062018] shadow-xl shadow-emerald-950/20 hover:bg-emerald-200" to="/request-help">
