@@ -52,7 +52,6 @@ function AuthForm({ mode, role }) {
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const fallbackPath = user ? ROLE_HOME_PATHS[user.role] : '/dashboard'
   const actionLabel = useMemo(() => {
     if (isSubmitting) {
       return isRegister ? t('auth.creating') : t('auth.signingIn')
@@ -61,8 +60,8 @@ function AuthForm({ mode, role }) {
     return isRegister ? 'Register volunteer' : t('auth.signIn')
   }, [isRegister, isSubmitting, t])
 
-  if (isAuthenticated) {
-    return <Navigate to={fallbackPath} replace />
+  if (isAuthenticated && user?.role === role) {
+    return <Navigate to={ROLE_HOME_PATHS[role]} replace />
   }
 
   const updateField = (event) => {

@@ -836,9 +836,53 @@ function SafetyStatusIcon({ status }) {
 }
 
 function HeroSection({ copy, heroImageIndex }) {
+  const handleAtmospherePointerMove = (event) => {
+    if (
+      event.pointerType !== 'mouse' ||
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    ) {
+      return
+    }
+
+    const bounds = event.currentTarget.getBoundingClientRect()
+    const x = Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width))
+    const y = Math.max(0, Math.min(1, (event.clientY - bounds.top) / bounds.height))
+    const hero = event.currentTarget
+
+    hero.style.setProperty('--pointer-x', `${(x * 100).toFixed(1)}%`)
+    hero.style.setProperty('--pointer-y', `${(y * 100).toFixed(1)}%`)
+    hero.style.setProperty('--shift-x', `${((x - 0.5) * 18).toFixed(1)}px`)
+    hero.style.setProperty('--shift-y', `${((y - 0.5) * -14).toFixed(1)}px`)
+    hero.style.setProperty('--tilt-y', `${((x - 0.5) * 7).toFixed(2)}deg`)
+  }
+
+  const resetAtmospherePointer = (event) => {
+    if (event.pointerType !== 'mouse') return
+
+    const hero = event.currentTarget
+    hero.style.setProperty('--pointer-x', '50%')
+    hero.style.setProperty('--pointer-y', '64%')
+    hero.style.setProperty('--shift-x', '0px')
+    hero.style.setProperty('--shift-y', '0px')
+    hero.style.setProperty('--tilt-y', '0deg')
+  }
+
   return (
-    <section className="border-b border-white/[0.04] bg-[#0b1111]">
-      <div className="mx-auto grid min-h-[760px] max-w-6xl items-center gap-12 px-4 py-16 sm:px-6 md:grid-cols-[minmax(0,0.95fr)_minmax(320px,1fr)] lg:px-8">
+    <section
+      className="landing-hero border-b border-white/[0.04]"
+      onPointerLeave={resetAtmospherePointer}
+      onPointerMove={handleAtmospherePointerMove}
+    >
+      <div aria-hidden="true" className="landing-hero__atmosphere">
+        <div className="landing-hero__rays" />
+        <div className="landing-hero__wave-field">
+          <div className="landing-hero__wave landing-hero__wave--emerald" />
+          <div className="landing-hero__wave landing-hero__wave--mint" />
+        </div>
+        <div className="landing-hero__glow" />
+        <div className="landing-hero__orb" />
+      </div>
+      <div className="relative z-10 mx-auto grid min-h-[760px] max-w-6xl items-center gap-12 px-4 py-16 sm:px-6 md:grid-cols-[minmax(0,0.95fr)_minmax(320px,1fr)] lg:px-8">
         <div>
           <p className="inline-flex items-center gap-2 rounded-full border border-red-200/45 bg-red-600/25 px-3 py-2 text-xs font-black uppercase tracking-normal text-white shadow-lg shadow-red-950/35">
             <span className="h-2 w-2 rounded-full bg-red-100 shadow-[0_0_14px_rgb(254_202_202/0.9)]" />
@@ -885,7 +929,7 @@ function HeroSection({ copy, heroImageIndex }) {
             ))}
             <div className="absolute inset-x-0 bottom-0 h-1/2 rounded-b-[28px] bg-gradient-to-t from-[#0b1111] via-[#0b1111]/35 to-transparent" />
           </div>
-          <div className="absolute -bottom-8 left-4 max-w-[230px] rounded-xl border border-white/10 bg-[#151c1c]/90 p-5 shadow-2xl shadow-black/30 backdrop-blur sm:left-[-30px]">
+          <div className="landing-response-card absolute -bottom-8 left-4 max-w-[230px] rounded-xl border border-white/10 bg-[#151c1c]/90 p-5 shadow-2xl shadow-black/30 backdrop-blur sm:left-[-30px]">
             <p className="flex items-center gap-2 text-sm font-extrabold text-white">
               <span className="grid h-5 w-5 place-items-center rounded-full border border-emerald-300/30 text-xs text-emerald-200">*</span>
               Response Team

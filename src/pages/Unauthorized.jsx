@@ -1,8 +1,11 @@
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { ROLE_HOME_PATHS } from '../auth/roles.js'
+import { useAuth } from '../auth/useAuth.js'
 
 function Unauthorized() {
   const { t } = useTranslation()
+  const { user } = useAuth()
 
   return (
     <section className="page-shell">
@@ -16,7 +19,7 @@ function Unauthorized() {
         <p className="mt-3 max-w-xl text-slate-600">
           {t('errors.unauthorizedBody')}
         </p>
-        <Link to="/dashboard" className="button-primary mt-6">
+        <Link to={ROLE_HOME_PATHS[user.role]} className="button-primary mt-6">
           {t('errors.back')}
         </Link>
       </div>
