@@ -19,6 +19,8 @@ function HelpRequestPage() {
     notes: '',
   })
   const [confirmation, setConfirmation] = useState(null)
+  const [submitError, setSubmitError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   const upazilaOptions = useMemo(
     () => (form.district ? districtUpazilas[form.district] ?? [] : []),
@@ -34,13 +36,30 @@ function HelpRequestPage() {
     )
   }
 
-  const submitRequest = (event) => {
+  const submitRequest = async (event) => {
     event.preventDefault()
-    const request = createHelpRequest({
+    setSubmitting(true)
+    setSubmitError('')
+    const requestData = {
       ...form,
       peopleCount: Number(form.peopleCount) || 1,
-    })
+    }
+    let storedRequest = requestData
+    try {
+      const response = await fetch('/api/help-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestData),
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(payload.error || 'Could not store the request on the server.')
+      storedRequest = payload.request
+    } catch (error) {
+      setSubmitError(`${error.message} A local copy was saved on this device.`)
+    }
+    const request = createHelpRequest(storedRequest)
     setConfirmation(request)
+    setSubmitting(false)
   }
 
   return (
@@ -85,6 +104,9 @@ function HelpRequestPage() {
                 Your request is saved as pending. Keep your phone reachable for
                 coordinator follow-up.
               </p>
+              {submitError ? (
+                <p className="mt-3 text-sm font-semibold text-amber-700">{submitError}</p>
+              ) : null}
               <div className="mt-5 flex flex-wrap gap-3">
                 <Link className="button-primary" to="/">
                   Back home
@@ -220,8 +242,9 @@ function HelpRequestPage() {
                 />
               </label>
 
-              <button className="button-primary w-full" type="submit">
-                Submit help request
+              {submitError ? <p className="text-sm font-semibold text-amber-700">{submitError}</p> : null}
+              <button className="button-primary w-full" disabled={submitting} type="submit">
+                {submitting ? 'Saving…' : 'Submit help request'}
               </button>
             </form>
           )}

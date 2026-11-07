@@ -1,8 +1,21 @@
 import { ROLES } from './roles.js'
 
 const TOKEN_KEY = 'auth_token'
+const SESSION_USER_KEY = 'auth_user'
 const USERS_KEY = 'mock_auth_users'
 const ISSUER = 'final-dev-auth'
+const mockFallbackEnabled = import.meta.env.DEV || import.meta.env.VITE_ENABLE_MOCK_AUTH === 'true'
+
+async function requestBackend(path, options) {
+  const response = await fetch(path, options)
+  const payload = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    const error = new Error(payload.error || `Authentication failed (${response.status}).`)
+    error.status = response.status
+    throw error
+  }
+  return payload
+}
 
 const seedUsers = [
   {
@@ -108,6 +121,22 @@ export const mockAuthService = {
   tokenKey: TOKEN_KEY,
 
   async login({ email, password, role }) {
+    try {
+      const session = await requestBackend('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+      if (session.user.role !== role) {
+        throw new Error(`This account is registered as ${session.user.role}.`)
+      }
+      localStorage.setItem(TOKEN_KEY, session.token)
+      localStorage.setItem(SESSION_USER_KEY, JSON.stringify(session.user))
+      return session
+    } catch (error) {
+      if (!mockFallbackEnabled) throw error
+    }
+
     await delay()
 
     const normalizedEmail = email.trim().toLowerCase()
@@ -124,11 +153,25 @@ export const mockAuthService = {
 
     const token = createMockJwt(user)
     localStorage.setItem(TOKEN_KEY, token)
+    localStorage.setItem(SESSION_USER_KEY, JSON.stringify(sanitizeUser(user)))
 
     return { token, user: sanitizeUser(user) }
   },
 
   async register({ name, email, password, role }) {
+    try {
+      const session = await requestBackend('/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password, role }),
+      })
+      localStorage.setItem(TOKEN_KEY, session.token)
+      localStorage.setItem(SESSION_USER_KEY, JSON.stringify(session.user))
+      return session
+    } catch (error) {
+      if (!mockFallbackEnabled) throw error
+    }
+
     await delay()
 
     const users = readUsers()
@@ -150,6 +193,7 @@ export const mockAuthService = {
 
     const token = createMockJwt(user)
     localStorage.setItem(TOKEN_KEY, token)
+    localStorage.setItem(SESSION_USER_KEY, JSON.stringify(sanitizeUser(user)))
 
     return { token, user: sanitizeUser(user) }
   },
@@ -165,24 +209,31 @@ export const mockAuthService = {
       const [, payload] = token.split('.')
       const decoded = decodeBase64Url(payload)
 
-      if (!decoded?.user || decoded.exp * 1000 < Date.now()) {
+      if (decoded.exp * 1000 < Date.now()) {
         localStorage.removeItem(TOKEN_KEY)
+        localStorage.removeItem(SESSION_USER_KEY)
         return null
       }
 
-      if (decoded.user.role === 'public') {
+      const tokenUser = decoded.user || JSON.parse(localStorage.getItem(SESSION_USER_KEY) || 'null')
+      if (!tokenUser) return null
+
+      if (tokenUser.role === 'public') {
         localStorage.removeItem(TOKEN_KEY)
+        localStorage.removeItem(SESSION_USER_KEY)
         return null
       }
 
-      return { token, user: sanitizeUser(decoded.user) }
+      return { token, user: sanitizeUser(tokenUser) }
     } catch {
       localStorage.removeItem(TOKEN_KEY)
+      localStorage.removeItem(SESSION_USER_KEY)
       return null
     }
   },
 
   logout() {
     localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(SESSION_USER_KEY)
   },
 }

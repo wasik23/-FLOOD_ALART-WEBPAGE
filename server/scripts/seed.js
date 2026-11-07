@@ -4,6 +4,7 @@ import { connectDatabase, sequelize } from '../config/database.js'
 import {
   Alert,
   District,
+  DonationAccount,
   Shelter,
   Task,
   User,
@@ -30,6 +31,18 @@ const SEED_ADMIN = {
 }
 
 const SEED_USERS = [
+  {
+    name: 'Volunteer User', email: 'volunteer@example.com', password: 'password',
+    phone: null, role: 'volunteer', district: 'Sylhet',
+  },
+  {
+    name: 'NGO Coordinator', email: 'coordinator@example.com', password: 'password',
+    phone: null, role: 'coordinator', district: 'Sylhet',
+  },
+  {
+    name: 'Admin User', email: 'admin@example.com', password: 'password',
+    phone: null, role: 'admin', district: 'Dhaka',
+  },
   {
     name: 'Farhana Akter',
     email: 'farhana.coordinator@reliefops.local',
@@ -281,6 +294,13 @@ const SEED_SUBSCRIBERS = [
   { phone: '8801512345682', district: 'Bogura', upazila: 'Sariakandi', name: 'Lamia Khatun' },
 ]
 
+const SEED_DONATION_ACCOUNTS = [
+  { id: 'bkash-personal', type: 'Mobile banking', label: 'bKash', accountName: 'ReliefOps Emergency Fund', accountNumber: '01712-345678', branch: 'Send Money', instructions: 'Use reference FLOODRELIEF and keep your transaction ID.' },
+  { id: 'nagad-merchant', type: 'Mobile banking', label: 'Nagad', accountName: 'ReliefOps Donation', accountNumber: '01898-765432', branch: 'Merchant Payment', instructions: 'Use counter number 01 for flood response donations.' },
+  { id: 'dbbl-bank', type: 'Bank transfer', label: 'Dutch-Bangla Bank', accountName: 'ReliefOps Foundation', accountNumber: '110.120.123456', branch: 'Motijheel Branch', instructions: 'Routing: 090271234. Email deposit slip to accounts@reliefops.org.' },
+  { id: 'brac-bank', type: 'Bank transfer', label: 'BRAC Bank', accountName: 'ReliefOps Foundation', accountNumber: '1520200001234001', branch: 'Gulshan Branch', instructions: 'Mention donor name and phone in the transfer note.' },
+]
+
 function hoursFromNow(hours) {
   return new Date(Date.now() + hours * 60 * 60 * 1000)
 }
@@ -416,6 +436,14 @@ async function run() {
     })
   }
   console.log(`[seed] ensured ${SEED_ALERTS.length} alerts`)
+
+  for (const account of SEED_DONATION_ACCOUNTS) {
+    await DonationAccount.findOrCreate({
+      where: { id: account.id },
+      defaults: { ...account, isActive: true, updatedById: admin.id },
+    })
+  }
+  console.log(`[seed] ensured ${SEED_DONATION_ACCOUNTS.length} mock donation accounts`)
 
   for (const subscriber of SEED_SUBSCRIBERS) {
     await upsertSubscriber(subscriber)

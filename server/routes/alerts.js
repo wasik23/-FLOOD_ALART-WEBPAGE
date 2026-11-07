@@ -7,6 +7,7 @@ import { handleValidation } from '../middleware/validate.js'
 import { sendSms } from '../services/smsGateway.js'
 import {
   listSubscribers,
+  removeSubscriber,
   upsertSubscriber,
 } from '../services/subscriberStore.js'
 
@@ -167,7 +168,7 @@ router.post('/subscribe', async (req, res) => {
   }
 })
 
-router.post('/send', async (req, res, next) => {
+router.post('/send', requireAuth, requireRole('admin', 'coordinator'), async (req, res, next) => {
   try {
     const { message, district, severity, title, upazila, phones } = req.body ?? {}
 
@@ -243,12 +244,29 @@ router.post('/send', async (req, res, next) => {
   }
 })
 
-router.get('/subscribers', async (req, res) => {
+router.get('/subscribers', requireAuth, requireRole('admin', 'coordinator'), async (req, res, next) => {
+  try {
   const subscribers = await listSubscribers({
     district: req.query.district,
     upazila: req.query.upazila,
   })
   res.json({ count: subscribers.length, subscribers })
+  } catch (error) {
+    next(error)
+  }
+})
+
+router.delete('/subscribe/:phone', async (req, res, next) => {
+  try {
+    const phone = normalisePhone(req.params.phone)
+    if (!phone || !phonePattern.test(phone)) {
+      return res.status(400).json({ error: 'A valid Bangladesh mobile number is required.' })
+    }
+    const removed = await removeSubscriber(phone)
+    return res.status(removed ? 200 : 404).json({ ok: removed })
+  } catch (error) {
+    return next(error)
+  }
 })
 
 export default router

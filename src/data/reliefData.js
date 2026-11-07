@@ -169,7 +169,7 @@ export function createHelpRequest(request) {
   const requests = getHelpRequests()
   const nextRequest = {
     ...request,
-    id: `request_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    id: request.id || `request_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     status: 'Pending',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

@@ -1,11 +1,28 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import BrandHeader from '../components/BrandHeader.jsx'
 import SiteFooter from '../components/SiteFooter.jsx'
 import { getDonationAccounts } from '../data/reliefData.js'
 
 function DonationPage() {
-  const [accounts] = useState(getDonationAccounts)
+  const [accounts, setAccounts] = useState(getDonationAccounts)
+  useEffect(() => {
+    const controller = new AbortController()
+    fetch('/api/donations', { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error('Could not load donation accounts.')
+        return response.json()
+      })
+      .then((payload) => {
+        if (Array.isArray(payload.accounts) && payload.accounts.length > 0) {
+          setAccounts(payload.accounts)
+        }
+      })
+      .catch((error) => {
+        if (error.name !== 'AbortError') console.warn('[donations] using local mock data')
+      })
+    return () => controller.abort()
+  }, [])
   const groupedAccounts = useMemo(
     () =>
       accounts.reduce((groups, account) => {

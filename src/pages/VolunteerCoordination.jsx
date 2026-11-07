@@ -85,7 +85,7 @@ function readJson(key, fallback) {
 }
 
 function VolunteerCoordination() {
-  const { user } = useAuth()
+  const { user, token } = useAuth()
   const savedProfile = getVolunteerProfiles().find((profile) => profile.userId === user.id)
   const adminOperations = readJson(ADMIN_USER_OPS_KEY, {})
   const isVerified = adminOperations[user.id]?.verified ?? false
@@ -134,6 +134,13 @@ function VolunteerCoordination() {
       email: user.email,
     })
     setProfileSaved(true)
+    if (token) {
+      fetch('/api/volunteers/me', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ...nextVolunteer, email: user.email, name: nextVolunteer.name || user.name }),
+      }).catch(() => {})
+    }
     return profile
   }
 

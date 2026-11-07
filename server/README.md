@@ -21,6 +21,10 @@ copy .env.example .env
 The server listens on `http://localhost:3000`. The Vite dev server proxies
 `/api/*` to it (see `vite.config.js`).
 
+ReliefOps uses MySQL for local development and production. Configure
+`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and `DB_PASSWORD` in `server/.env`
+before seeding or starting the backend.
+
 ## REST API overview
 
 All `/api/*` endpoints return JSON. Protected endpoints require an
@@ -44,8 +48,8 @@ All `/api/*` endpoints return JSON. Protected endpoints require an
 | POST   | `/auth/login`    | -    | `{email, password}`                             |
 | GET    | `/auth/me`       | yes  | -                                               |
 
-`role` on registration is restricted to non-admin values; admins must be
-created via the seed script.
+Public registration is restricted to citizen and volunteer accounts.
+Coordinators and admins must be provisioned by an administrator or the seed script.
 
 ### Resources
 
@@ -60,6 +64,13 @@ created via the seed script.
 | POST   | `/api/reports/water-level`    | volunteer, coordinator, admin   |
 | GET    | `/api/alerts`                 | public                          |
 | POST   | `/api/alerts`                 | admin, coordinator              |
+| POST   | `/api/help-requests`           | public (rate limited)           |
+| GET    | `/api/help-requests`           | admin, coordinator              |
+| PATCH  | `/api/help-requests/:id`       | admin, coordinator              |
+| GET    | `/api/volunteers`              | admin, coordinator              |
+| GET/PUT| `/api/volunteers/me`           | authenticated                   |
+| GET    | `/api/donations`               | public                          |
+| PUT    | `/api/donations`               | admin, coordinator              |
 
 `POST /api/reports/water-level` also updates the target district's current
 risk snapshot, emits a `water_level_update` Socket.IO event, and — when the
@@ -86,8 +97,8 @@ Request body:
 ```
 
 The phone number is normalised to `8801XXXXXXXXX`. The subscriber is upserted
-into `server/data/subscribers.json` and a confirmation SMS is sent through
-the configured gateway.
+into MySQL, mirrored to the legacy JSON store, and a confirmation SMS is sent
+through the configured gateway.
 
 Response (201):
 
@@ -123,8 +134,7 @@ Returns per-recipient delivery status:
 
 ### GET `/api/alerts/subscribers?district=&upazila=`
 
-Lists stored subscribers (intended for operator use; protect before
-production exposure).
+Lists active subscribers. Requires an admin or coordinator bearer token.
 
 ## SMS gateway
 
@@ -150,7 +160,27 @@ Selection rules:
 
 ## Storage
 
-Subscribers are persisted to `server/data/subscribers.json`. The file is
-created on first write and writes are serialised through a promise chain to
-prevent interleaved JSON writes. Swap this out for a real database before
-production use.
+Operational records are persisted in MySQL through Sequelize. This includes
+users, districts, shelters, tasks, water reports, alerts, help requests,
+volunteer profiles, donation accounts, and SMS subscribers.
+
+The existing `server/data/subscribers.json` file is retained as a legacy
+mirror. Its records are imported into MySQL at server startup, so existing
+mock data is preserved. Runtime queries and SMS targeting use MySQL.
+
+To inspect stored records directly from the project:
+
+```bash
+npm run db:query -- help-requests --limit=20
+npm run db:query -- volunteers --limit=20
+npm run db:query -- donations
+npm run db:query -- subscribers
+```
+
+Available query resources are printed when `npm run db:query` is run without
+a resource name. API collection routes support pagination through `page` and
+`limit` where applicable.
+
+Production startup requires `JWT_SECRET`, `CLIENT_ORIGIN`, and
+`WATER_LEVEL_EVENT_TOKEN`. Public write endpoints are rate limited and
+subscriber/operator endpoints require an admin or coordinator JWT.

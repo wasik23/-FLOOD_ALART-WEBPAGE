@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import L from 'leaflet'
 import { useTranslation } from 'react-i18next'
 import { ROLES } from '../auth/roles.js'
+import { useAuth } from '../auth/useAuth.js'
 import {
   getDonationAccounts,
   getHelpRequests,
@@ -225,6 +226,7 @@ function formatDateTime(value, locale = 'en-BD') {
 }
 
 function AdminDashboard() {
+  const { token } = useAuth()
   const { i18n, t } = useTranslation()
   const locale = i18n.language === 'bn-BD' ? 'bn-BD' : 'en-BD'
   const mapNodeRef = useRef(null)
@@ -698,7 +700,10 @@ function AdminDashboard() {
     try {
       const response = await fetch('/api/alerts/send', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           district: selectedDistrict,
           severity: riskLevel,

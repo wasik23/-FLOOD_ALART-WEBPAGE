@@ -1,7 +1,7 @@
 /* eslint-env node */
 import { Router } from 'express'
 import { body } from 'express-validator'
-import { User, District, USER_ROLES } from '../models/index.js'
+import { User, District } from '../models/index.js'
 import { handleValidation } from '../middleware/validate.js'
 import { signToken, requireAuth } from '../middleware/auth.js'
 
@@ -14,7 +14,7 @@ router.post(
     body('email').isEmail().normalizeEmail(),
     body('password').isString().isLength({ min: 8, max: 128 }),
     body('phone').optional({ nullable: true }).isString().trim().isLength({ max: 20 }),
-    body('role').optional().isIn(USER_ROLES.filter((r) => r !== 'admin')),
+    body('role').optional().isIn(['citizen', 'volunteer']),
     body('districtId').optional({ nullable: true }).isInt({ min: 1 }).toInt(),
   ],
   handleValidation,

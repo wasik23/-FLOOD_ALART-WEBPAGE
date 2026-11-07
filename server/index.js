@@ -2,6 +2,8 @@
 import 'dotenv/config'
 import cors from 'cors'
 import express from 'express'
+import helmet from 'helmet'
+import { rateLimit } from 'express-rate-limit'
 import { createServer } from 'node:http'
 import { Server } from 'socket.io'
 
@@ -15,16 +17,23 @@ import ffwcRouter from './routes/ffwc.js'
 import sheltersRouter from './routes/shelters.js'
 import tasksRouter from './routes/tasks.js'
 import reportsRouter from './routes/reports.js'
+import helpRequestsRouter from './routes/helpRequests.js'
+import volunteersRouter from './routes/volunteers.js'
+import donationsRouter from './routes/donations.js'
+import databaseViewerRouter from './routes/databaseViewer.js'
 
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js'
 import {
   listCurrentWaterAlerts,
   recordWaterLevelAndAlert,
 } from './services/waterLevelAlerts.js'
+import { migrateLegacySubscribers } from './services/subscriberStore.js'
 
 const PORT = process.env.PORT || 3000
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN
 const DB_SYNC = process.env.DB_SYNC || 'safe' // 'safe' | 'alter' | 'force' | 'off'
+const isProduction = process.env.NODE_ENV === 'production'
+let databaseReady = false
 
 const app = express()
 const httpServer = createServer(app)
@@ -36,15 +45,31 @@ const io = new Server(httpServer, {
 })
 app.set('io', io)
 
-app.use(cors({ origin: CLIENT_ORIGIN ? CLIENT_ORIGIN.split(',') : true }))
+app.use(helmet())
+app.use(cors({ origin: CLIENT_ORIGIN ? CLIENT_ORIGIN.split(',') : !isProduction }))
 app.use(express.json({ limit: '128kb' }))
+const publicWriteLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+})
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+})
+app.use('/auth', authLimiter)
+app.use('/api/alerts/subscribe', publicWriteLimiter)
+app.use('/api/help-requests', publicWriteLimiter)
 
 const now = () => new Date().toISOString()
 
 app.get('/health', (_req, res) => {
   res.json({
     ok: true,
-    db: Object.hasOwn(sequelize.connectionManager, 'pool') ? 'ready' : 'pending',
+    db: databaseReady ? 'ready' : 'unavailable',
     socketClients: io.engine.clientsCount,
     time: now(),
   })
@@ -58,9 +83,18 @@ app.use('/api/ffwc', ffwcRouter)
 app.use('/api/shelters', sheltersRouter)
 app.use('/api/tasks', tasksRouter)
 app.use('/api/reports', reportsRouter)
+app.use('/api/help-requests', helpRequestsRouter)
+app.use('/api/volunteers', volunteersRouter)
+app.use('/api/donations', donationsRouter)
+if (process.env.ENABLE_DB_VIEWER === 'true' && !isProduction) {
+  app.use('/db-viewer', databaseViewerRouter)
+}
 
 // Internal event endpoints used by the simulator / external producers.
 app.post('/events/alerts', (req, res) => {
+  if (!eventTokenIsValid(req)) {
+    return res.status(401).json({ error: 'Invalid event token.' })
+  }
   const event = {
     id: `alert-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     timestamp: now(),
@@ -151,6 +185,9 @@ app.post('/events/water-level', async (req, res, next) => {
 })
 
 app.post('/events/tasks/accepted', (req, res) => {
+  if (!eventTokenIsValid(req)) {
+    return res.status(401).json({ error: 'Invalid event token.' })
+  }
   const event = {
     id: `task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     timestamp: now(),
@@ -184,12 +221,26 @@ async function syncDatabase() {
 
 async function bootstrap() {
   try {
+    if (isProduction) {
+      const unsafeSecret = !process.env.JWT_SECRET || process.env.JWT_SECRET === 'change-me-in-production'
+      if (unsafeSecret) throw new Error('JWT_SECRET must be set to a strong value in production.')
+      if (!CLIENT_ORIGIN) throw new Error('CLIENT_ORIGIN must be set in production.')
+      if (!process.env.WATER_LEVEL_EVENT_TOKEN) {
+        throw new Error('WATER_LEVEL_EVENT_TOKEN must be set in production.')
+      }
+    }
     await connectDatabase()
     await syncDatabase()
+    databaseReady = true
+    const migratedSubscribers = await migrateLegacySubscribers()
     console.log(`[db] connected (sync=${DB_SYNC})`)
+    if (migratedSubscribers) {
+      console.log(`[db] ensured ${migratedSubscribers} legacy SMS subscribers`)
+    }
   } catch (err) {
+    databaseReady = false
     console.error('[db] connection failed:', err.message)
-    if (process.env.DB_REQUIRED === 'true') process.exit(1)
+    if (isProduction || process.env.DB_REQUIRED === 'true') process.exit(1)
     console.warn('[db] continuing without database — REST endpoints that need it will 500.')
   }
 

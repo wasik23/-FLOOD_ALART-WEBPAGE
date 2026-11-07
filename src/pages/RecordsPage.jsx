@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ROLES } from '../auth/roles.js'
 import { useAuth } from '../auth/useAuth.js'
 import {
@@ -38,7 +38,7 @@ function writeJson(key, value) {
 }
 
 function RecordsPage() {
-  const { user } = useAuth()
+  const { user, token } = useAuth()
   const [volunteers, setVolunteers] = useState(getVolunteerProfiles)
   const [accounts, setAccounts] = useState(getDonationAccounts)
   const [helpRequests, setHelpRequests] = useState(getHelpRequests)
@@ -48,6 +48,36 @@ function RecordsPage() {
   const [savedMessage, setSavedMessage] = useState('')
   const [savedDonationAccount, setSavedDonationAccount] = useState('')
   const canManageVolunteers = user.role === ROLES.NGO
+
+  useEffect(() => {
+    if (!token) return undefined
+    const headers = { Authorization: `Bearer ${token}` }
+    const controller = new AbortController()
+    Promise.allSettled([
+      fetch('/api/volunteers?limit=100', { headers, signal: controller.signal }).then((r) => r.ok ? r.json() : Promise.reject()),
+      fetch('/api/help-requests?limit=100', { headers, signal: controller.signal }).then((r) => r.ok ? r.json() : Promise.reject()),
+      fetch('/api/donations', { signal: controller.signal }).then((r) => r.ok ? r.json() : Promise.reject()),
+    ]).then(([volunteerResult, requestResult, donationResult]) => {
+      if (volunteerResult.status === 'fulfilled') {
+        setVolunteers((local) => {
+          const server = volunteerResult.value.profiles || []
+          const serverIds = new Set(server.map((item) => String(item.userId || item.externalUserId)))
+          return [...server, ...local.filter((item) => !serverIds.has(String(item.userId)))]
+        })
+      }
+      if (requestResult.status === 'fulfilled') {
+        setHelpRequests((local) => {
+          const server = requestResult.value.requests || []
+          const serverIds = new Set(server.map((item) => String(item.id)))
+          return [...server, ...local.filter((item) => !serverIds.has(String(item.id)))]
+        })
+      }
+      if (donationResult.status === 'fulfilled' && donationResult.value.accounts?.length) {
+        setAccounts(donationResult.value.accounts)
+      }
+    })
+    return () => controller.abort()
+  }, [token])
 
   const updateVolunteer = (userId, field, value) => {
     setVolunteers((current) =>
@@ -89,12 +119,21 @@ function RecordsPage() {
     )
   }
 
-  const saveRecords = () => {
+  const saveRecords = async () => {
     saveVolunteerProfiles(volunteers)
     saveDonationAccounts(accounts)
     saveHelpRequests(helpRequests)
     writeJson(ADMIN_USER_OPS_KEY, volunteerOperations)
-    setSavedMessage('Records saved for NGO/admin review.')
+    if (token) {
+      const response = await fetch('/api/donations', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ accounts }),
+      }).catch(() => null)
+      setSavedMessage(response?.ok ? 'Records saved locally and donation accounts stored in the database.' : 'Records saved locally; the server copy could not be updated.')
+    } else {
+      setSavedMessage('Records saved locally for NGO/admin review.')
+    }
   }
 
   const saveDonationAccount = (accountId) => {
