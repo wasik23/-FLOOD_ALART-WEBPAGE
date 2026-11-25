@@ -1,7 +1,7 @@
 /* eslint-env node */
 import { Router } from 'express'
 import { body, param, query } from 'express-validator'
-import { HelpRequest, User, HELP_NEED_TYPES, HELP_REQUEST_STATUSES } from '../models/index.js'
+import { HelpRequest, User, VolunteerProfile, AuditEntry, sequelize, HELP_NEED_TYPES, HELP_REQUEST_STATUSES } from '../models/index.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
 import { handleValidation } from '../middleware/validate.js'
 
@@ -26,10 +26,12 @@ router.post(
   handleValidation,
   async (req, res, next) => {
     try {
+      const { name, phone, district, upazila, address, needType, peopleCount, notes } = req.body
       const request = await HelpRequest.create({
-        ...req.body,
-        notes: req.body.notes || null,
+        name, phone, district, upazila, address, needType, peopleCount,
+        notes: notes || null,
         status: 'Pending',
+        familiesHelped: 0,
       })
       return res.status(201).json({ request })
     } catch (error) {
@@ -78,20 +80,30 @@ router.patch(
   [
     param('id').isUUID(),
     body('status').optional().isIn(HELP_REQUEST_STATUSES),
+    body('familiesHelped').optional().isInt({ min: 0, max: 10000 }).toInt(),
     body('assignedToId').optional({ nullable: true }).isInt({ min: 1 }).toInt(),
   ],
   handleValidation,
   async (req, res, next) => {
     try {
-      const request = await HelpRequest.findByPk(req.params.id)
-      if (!request) return res.status(404).json({ error: 'Help request not found.' })
-      if (req.body.assignedToId) {
-        const assignee = await User.findByPk(req.body.assignedToId)
-        if (!assignee) return res.status(400).json({ error: 'Unknown assignedToId.' })
-      }
-      await request.update({
-        ...(req.body.status !== undefined && { status: req.body.status }),
-        ...(req.body.assignedToId !== undefined && { assignedToId: req.body.assignedToId }),
+      const request = await sequelize.transaction(async (transaction) => {
+        const record = await HelpRequest.findByPk(req.params.id, { transaction, lock: transaction.LOCK?.UPDATE })
+        const fail = (status, message) => { const error = new Error(message); error.status = status; error.expose = true; throw error }
+        if (!record) fail(404, 'Help request not found.')
+        const status = req.body.status ?? record.status
+        const familiesHelped = req.body.familiesHelped ?? record.familiesHelped
+        if (status === 'Completed' && familiesHelped < 1) fail(400, 'Record the number of families helped before completing this request.')
+        if (req.body.assignedToId) {
+          const assignee = await User.findByPk(req.body.assignedToId, { transaction })
+          const profile = await VolunteerProfile.findOne({ where: { userId: req.body.assignedToId, isActive: true, verified: true, availability: 'Available' }, transaction })
+          if (!assignee || assignee.role !== 'volunteer' || !assignee.isActive || !profile) fail(400, 'Choose an active, verified and available volunteer.')
+        }
+        await record.update({
+          status, familiesHelped,
+          ...(req.body.assignedToId !== undefined && { assignedToId: req.body.assignedToId }),
+        }, { transaction })
+        await AuditEntry.create({ actorId: req.user.id, action: 'Help request updated', detail: `${record.id}: ${status}, ${familiesHelped} families helped.` }, { transaction })
+        return record
       })
       return res.json({ request })
     } catch (error) {

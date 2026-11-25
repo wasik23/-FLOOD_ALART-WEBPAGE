@@ -251,7 +251,7 @@ function AuthForm({ mode, role }) {
             </label>
 
             {error ? (
-              <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+              <p className="text-sm font-semibold text-red-400" role="alert">
                 {error}
               </p>
             ) : null}

@@ -27,14 +27,21 @@ export async function requireAuth(req, res, next) {
     return res.status(401).json({ error: 'Invalid or expired token.' })
   }
 
-  const user = await User.findByPk(payload.sub)
-  if (!user) {
-    return res.status(401).json({ error: 'User no longer exists.' })
-  }
+  try {
+    const user = await User.findByPk(payload.sub)
+    if (!user) {
+      return res.status(401).json({ error: 'User no longer exists.' })
+    }
+    if (!user.isActive || (user.role === 'coordinator' && user.approvalStatus !== 'Approved')) {
+      return res.status(403).json({ error: 'This account is suspended or awaiting approval.' })
+    }
 
-  req.user = user
-  req.token = payload
-  next()
+    req.user = user
+    req.token = payload
+    return next()
+  } catch (error) {
+    return next(error)
+  }
 }
 
 export function requireRole(...allowedRoles) {

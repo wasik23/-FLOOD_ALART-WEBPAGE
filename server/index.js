@@ -21,6 +21,10 @@ import helpRequestsRouter from './routes/helpRequests.js'
 import volunteersRouter from './routes/volunteers.js'
 import donationsRouter from './routes/donations.js'
 import databaseViewerRouter from './routes/databaseViewer.js'
+import impactStatsRouter from './routes/impactStats.js'
+import { migrateImpactStats } from './migrations/impactStats.js'
+import { migrateDashboard } from './migrations/dashboard.js'
+import dashboardRouter from './routes/dashboard.js'
 
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js'
 import {
@@ -86,6 +90,8 @@ app.use('/api/reports', reportsRouter)
 app.use('/api/help-requests', helpRequestsRouter)
 app.use('/api/volunteers', volunteersRouter)
 app.use('/api/donations', donationsRouter)
+app.use('/api/impact-stats', impactStatsRouter)
+app.use('/api/dashboard', dashboardRouter)
 if (process.env.ENABLE_DB_VIEWER === 'true' && !isProduction) {
   app.use('/db-viewer', databaseViewerRouter)
 }
@@ -217,6 +223,8 @@ async function syncDatabase() {
   const options =
     DB_SYNC === 'force' ? { force: true } : DB_SYNC === 'alter' ? { alter: true } : {}
   await sequelize.sync(options)
+  await migrateImpactStats()
+  await migrateDashboard()
 }
 
 async function bootstrap() {

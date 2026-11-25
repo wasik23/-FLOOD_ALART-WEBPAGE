@@ -77,6 +77,13 @@ function getIsoDates(dayLabels, reportDate) {
   })
 }
 
+function asWaterLevel(value) {
+  const text = String(value ?? '').trim()
+  if (!/^[+-]?(?:\d+(?:\.\d+)?|\.\d+)$/.test(text)) return null
+  const number = Number(text)
+  return Number.isFinite(number) ? number : null
+}
+
 export function parseFfwcReport(html) {
   const reportDate = parseReportDate(html)
   const tableStart = html.search(/<table\b/i)
@@ -94,28 +101,33 @@ export function parseFfwcReport(html) {
 
   if (!hasStationHeaders) throw new Error('FFWC station table headers were not found.')
 
-  const dateRowIndex = rows.findIndex(
-    (cells) => cells.filter((cell) => /^\d{2}-\d{2}$/.test(cell.text)).length >= 3,
-  )
-  if (dateRowIndex < 0) throw new Error('FFWC observation dates were not found.')
-
-  const dayLabels = rows[dateRowIndex]
-    .map((cell) => cell.text)
-    .filter((text) => /^\d{2}-\d{2}$/.test(text))
-  const groupHeader = rows
-    .slice(0, dateRowIndex)
-    .flat()
+  const groupHeader = rows.flat()
     .find((cell) => /WL\s*-\s*Observe/i.test(cell.text))
   const columnSpan = groupHeader?.attributes.match(
     /\bcolspan\s*=\s*["']?(\d+)/i,
   )
   const observedColumnCount = columnSpan ? Number(columnSpan[1]) : 0
 
-  if (!observedColumnCount || !dayLabels.length) {
+  if (!observedColumnCount) {
     throw new Error('FFWC observation columns were not identified.')
   }
 
-  const dates = getIsoDates(dayLabels, reportDate)
+  // Dry-season reports may contain only two observed dates and no forecast date.
+  const dateRowIndex = rows.findIndex(
+    (cells) => cells.filter((cell) => /^\d{2}-\d{2}$/.test(cell.text)).length >= observedColumnCount,
+  )
+  if (dateRowIndex < 0) throw new Error('FFWC observation dates were not found.')
+  const dateCells = rows[dateRowIndex]
+  const firstDate = dateCells.findIndex((cell) => /^\d{2}-\d{2}$/.test(cell.text))
+  const columnLabels = dateCells.slice(firstDate).map((cell) => cell.text)
+  const dayLabels = columnLabels.filter((text) => /^\d{2}-\d{2}$/.test(text))
+  if (!columnLabels.slice(0, observedColumnCount).every((label) => /^\d{2}-\d{2}$/.test(label))) {
+    throw new Error('FFWC observation dates were not identified.')
+  }
+
+  const isoDates = getIsoDates(dayLabels, reportDate)
+  let nextDate = 0
+  const dates = columnLabels.map((label) => /^\d{2}-\d{2}$/.test(label) ? isoDates[nextDate++] : null)
   const waterLevels = []
   let basin = null
 
@@ -128,22 +140,22 @@ export function parseFfwcReport(html) {
 
     const river = cells[0]?.text
     const station = cells[1]?.text
-    const dangerLevel = Number(cells[2]?.text)
-    if (!river || !station || !Number.isFinite(dangerLevel)) return
+    const dangerLevel = asWaterLevel(cells[2]?.text)
+    if (!river || !station || dangerLevel === null) return
 
     const observations = dates
       .slice(0, observedColumnCount)
       .map((date, index) => ({
         date,
-        value: Number(cells[index + 3]?.text),
+        value: asWaterLevel(cells[index + 3]?.text),
       }))
-      .filter((item) => Number.isFinite(item.value))
+      .filter((item) => item.value !== null)
     if (!observations.length) return
 
     const forecasts = dates.slice(observedColumnCount).map((date, index) => {
-      const value = Number(cells[observedColumnCount + index + 3]?.text)
-      return { date, value: Number.isFinite(value) ? value : null }
-    })
+      const value = asWaterLevel(cells[observedColumnCount + index + 3]?.text)
+      return { date, value }
+    }).filter((item) => item.date !== null)
 
     waterLevels.push({
       basin,
@@ -216,8 +228,7 @@ function getTrend(latest, previous) {
 }
 
 function asCoordinate(value) {
-  const coordinate = Number(value)
-  return Number.isFinite(coordinate) ? coordinate : null
+  return asWaterLevel(value)
 }
 
 async function loadLatestWaterLevels() {

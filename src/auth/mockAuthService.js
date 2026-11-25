@@ -64,6 +64,9 @@ const sanitizeUser = (user) => ({
   name: user.name,
   email: user.email,
   role: user.role === 'ngo' ? ROLES.NGO : user.role,
+  districtId: user.districtId ?? null,
+  isActive: user.isActive ?? true,
+  approvalStatus: user.approvalStatus ?? 'Approved',
 })
 
 const createMockJwt = (user) => {
@@ -128,13 +131,15 @@ export const mockAuthService = {
         body: JSON.stringify({ email, password }),
       })
       if (session.user.role !== role) {
-        throw new Error(`This account is registered as ${session.user.role}.`)
+        const error = new Error(`This account is registered as ${session.user.role}.`)
+        error.status = 403
+        throw error
       }
       localStorage.setItem(TOKEN_KEY, session.token)
       localStorage.setItem(SESSION_USER_KEY, JSON.stringify(session.user))
       return session
     } catch (error) {
-      if (!mockFallbackEnabled) throw error
+      if (!mockFallbackEnabled || (error.status && error.status < 500 && error.status !== 404)) throw error
     }
 
     await delay()
@@ -149,6 +154,10 @@ export const mockAuthService = {
 
     if (!user) {
       throw new Error('No mock user matches that email, password, and role.')
+    }
+    const operation = JSON.parse(localStorage.getItem('admin_user_ops') || '{}')[user.id]
+    if (operation?.status === 'Banned' || (user.role === ROLES.NGO && operation?.verified === false)) {
+      throw new Error('This demo account is suspended or awaiting approval.')
     }
 
     const token = createMockJwt(user)
@@ -169,7 +178,7 @@ export const mockAuthService = {
       localStorage.setItem(SESSION_USER_KEY, JSON.stringify(session.user))
       return session
     } catch (error) {
-      if (!mockFallbackEnabled) throw error
+      if (!mockFallbackEnabled || (error.status && error.status < 500 && error.status !== 404)) throw error
     }
 
     await delay()

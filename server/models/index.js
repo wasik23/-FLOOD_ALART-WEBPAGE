@@ -10,6 +10,8 @@ import { initSubscriber } from './Subscriber.js'
 import { initHelpRequest, HELP_REQUEST_STATUSES, HELP_NEED_TYPES } from './HelpRequest.js'
 import { initVolunteerProfile, VOLUNTEER_AVAILABILITY } from './VolunteerProfile.js'
 import { initDonationAccount } from './DonationAccount.js'
+import { initDonationReceipt } from './DonationReceipt.js'
+import { initAuditEntry } from './AuditEntry.js'
 
 const User = initUser(sequelize)
 const District = initDistrict(sequelize)
@@ -21,6 +23,8 @@ const Subscriber = initSubscriber(sequelize)
 const HelpRequest = initHelpRequest(sequelize)
 const VolunteerProfile = initVolunteerProfile(sequelize)
 const DonationAccount = initDonationAccount(sequelize)
+const DonationReceipt = initDonationReceipt(sequelize)
+const AuditEntry = initAuditEntry(sequelize)
 
 District.hasMany(User, { foreignKey: 'districtId', as: 'users' })
 User.belongsTo(District, { foreignKey: 'districtId', as: 'district' })
@@ -53,6 +57,10 @@ User.hasMany(HelpRequest, { foreignKey: 'assignedToId', as: 'assignedHelpRequest
 HelpRequest.belongsTo(User, { foreignKey: 'assignedToId', as: 'assignedTo' })
 User.hasMany(DonationAccount, { foreignKey: 'updatedById', as: 'updatedDonationAccounts' })
 DonationAccount.belongsTo(User, { foreignKey: 'updatedById', as: 'updatedBy' })
+User.hasMany(DonationReceipt, { foreignKey: 'recordedById', as: 'donationReceipts', onDelete: 'RESTRICT' })
+DonationReceipt.belongsTo(User, { foreignKey: 'recordedById', as: 'recordedBy', onDelete: 'RESTRICT' })
+DonationReceipt.belongsTo(User, { foreignKey: 'updatedById', as: 'updatedBy', onDelete: 'RESTRICT' })
+AuditEntry.belongsTo(User, { foreignKey: 'actorId', as: 'actor', onDelete: 'SET NULL' })
 
 export {
   sequelize,
@@ -66,6 +74,8 @@ export {
   HelpRequest,
   VolunteerProfile,
   DonationAccount,
+  DonationReceipt,
+  AuditEntry,
   USER_ROLES,
   RISK_LEVELS,
   TASK_STATUSES,

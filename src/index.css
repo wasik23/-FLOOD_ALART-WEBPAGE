@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+.landing-home #forecasts,
+.landing-home #news,
+.landing-home #contact {
+  scroll-margin-top: calc(var(--landing-header-height, 80px) + 16px);
+}
+
 :root {
   color: #e5e7eb;
   background: #080d0d;

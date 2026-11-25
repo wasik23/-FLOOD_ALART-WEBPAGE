@@ -1,7 +1,7 @@
 /* eslint-env node */
 import { Router } from 'express'
 import { body, param, query } from 'express-validator'
-import { Task, District, User, TASK_PRIORITIES, TASK_STATUSES } from '../models/index.js'
+import { Task, District, User, VolunteerProfile, TASK_PRIORITIES, TASK_STATUSES } from '../models/index.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
 import { handleValidation } from '../middleware/validate.js'
 
@@ -102,6 +102,10 @@ router.put(
   handleValidation,
   async (req, res, next) => {
     try {
+      if (req.user.role === 'volunteer') {
+        const profile = await VolunteerProfile.findOne({ where: { userId: req.user.id, verified: true, isActive: true } })
+        if (!profile) return res.status(403).json({ error: 'Volunteer approval is required to accept a task.' })
+      }
       const task = await Task.findByPk(req.params.id, {
         include: [{ model: District, as: 'district', attributes: ['id', 'name'] }],
       })
@@ -113,10 +117,9 @@ router.put(
         })
       }
 
-      task.status = 'Accepted'
-      task.assignedToId = req.user.id
-      task.acceptedAt = new Date()
-      await task.save()
+      const [updated] = await Task.update({ status: 'Accepted', assignedToId: req.user.id, acceptedAt: new Date() }, { where: { id: task.id, status: 'Open' } })
+      if (!updated) return res.status(409).json({ error: 'This task has already been accepted.' })
+      await task.reload()
 
       emitTaskEvent(req, 'volunteer_accepted_task', {
         taskId: task.id,

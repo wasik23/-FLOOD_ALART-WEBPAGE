@@ -11,8 +11,8 @@ export class User extends Model {
   }
 
   toSafeJSON() {
-    const { id, name, email, phone, role, districtId, createdAt } = this
-    return { id, name, email, phone, role, districtId, createdAt }
+    const { id, name, email, phone, role, districtId, isActive, approvalStatus, createdAt } = this
+    return { id, name, email, phone, role, districtId, isActive, approvalStatus, createdAt }
   }
 }
 
@@ -47,6 +47,8 @@ export function initUser(sequelize) {
         allowNull: false,
         defaultValue: 'citizen',
       },
+      isActive: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+      approvalStatus: { type: DataTypes.ENUM('Pending', 'Approved'), allowNull: false, defaultValue: 'Approved' },
       districtId: {
         type: DataTypes.INTEGER.UNSIGNED,
         allowNull: true,

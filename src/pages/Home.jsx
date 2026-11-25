@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom'
 import PropTypes from 'prop-types'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import ImpactStats from '../components/ImpactStats.jsx'
+import LiveDonations from '../components/LiveDonations.jsx'
 import { getLiveWaterLevels } from '../services/ffwc.js'
 
 function ScrollReveal({ as: Element = 'div', children, className = '', delay = 0, style, ...props }) {
@@ -153,6 +155,8 @@ const copyPropType = PropTypes.shape({
     title: PropTypes.string.isRequired,
     sourceNote: PropTypes.string.isRequired,
     fallbackNote: PropTypes.string.isRequired,
+    sampleReading: PropTypes.string.isRequired,
+    staleFeed: PropTypes.string.isRequired,
     liveFeed: PropTypes.string.isRequired,
     telemetryTitle: PropTypes.string.isRequired,
     table: PropTypes.shape({
@@ -283,6 +287,8 @@ const landingCopy = {
       showAll: 'Browse all stations',
       sourceNote: 'Latest field observations from FFWC at 06:00 Bangladesh time; readings may update once daily.',
       fallbackNote: 'Sample readings and danger thresholds are for display only; live FFWC data is unavailable.',
+      sampleReading: 'Sample reading',
+      staleFeed: 'Last successful FFWC feed · refresh unavailable',
       liveFeed: 'Latest FFWC field observations',
       telemetryTitle: 'Latest FFWC water levels',
       table: {
@@ -462,6 +468,8 @@ const landingCopy = {
       showAll: 'সব স্টেশন দেখুন',
       sourceNote: 'এফএফডব্লিউসি-এর সকাল ৬টার সর্বশেষ মাঠপর্যায়ের পর্যবেক্ষণ; তথ্য দিনে একবার হালনাগাদ হতে পারে।',
       fallbackNote: 'ডেমো পাঠ ও বিপদসীমা শুধু নমুনা; লাইভ এফএফডব্লিউসি তথ্য পাওয়া যাচ্ছে না।',
+      sampleReading: 'নমুনা পাঠ',
+      staleFeed: 'সর্বশেষ পাওয়া এফএফডব্লিউসি তথ্য · আপডেট পাওয়া যাচ্ছে না',
       liveFeed: 'এফএফডব্লিউসি-এর সর্বশেষ পর্যবেক্ষণ',
       telemetryTitle: 'এফএফডব্লিউসি-এর সর্বশেষ পানির স্তর',
       table: {
@@ -622,11 +630,11 @@ function Home() {
   const [waterDataStatus, setWaterDataStatus] = useState('loading')
   const language = i18n.language === 'bn-BD' ? 'bn-BD' : 'en'
   const copy = landingCopy[language]
-  const forecastCards = (liveWaterData?.waterLevels?.length
+  const forecastCards = (liveWaterData
     ? liveWaterData.waterLevels
     : copy.forecasts
   ).slice().sort(compareForecastCards)
-  const liveNewsCards = liveWaterData?.waterLevels?.length
+  const liveNewsCards = liveWaterData
     ? liveWaterData.waterLevels.slice(0, 3).map((item) => ({
         id: `ffwc-${item.id}`,
         title: `${item.station} station is ${item.trend.toLowerCase()}`,
@@ -649,27 +657,43 @@ function Home() {
   }, [])
 
   useEffect(() => {
-    const controller = new AbortController()
-
-    getLiveWaterLevels({ signal: controller.signal })
-      .then((data) => {
+    let controller
+    let timer
+    let disposed = false
+    const refresh = async () => {
+      window.clearTimeout(timer)
+      controller?.abort()
+      const request = new AbortController()
+      controller = request
+      try {
+        const data = await getLiveWaterLevels({ signal: request.signal })
+        if (disposed || request.signal.aborted) return
         setLiveWaterData(data)
         setWaterDataStatus('live')
-      })
-      .catch((error) => {
-        if (error.name !== 'AbortError') {
-          setWaterDataStatus('fallback')
-        }
-      })
-
-    return () => controller.abort()
+        timer = window.setTimeout(refresh, 5 * 60 * 1000)
+      } catch {
+        if (disposed || request.signal.aborted) return
+        setWaterDataStatus((status) => ['live', 'stale'].includes(status) ? 'stale' : 'fallback')
+        timer = window.setTimeout(refresh, 15000)
+      }
+    }
+    refresh()
+    window.addEventListener('focus', refresh)
+    return () => {
+      disposed = true
+      window.clearTimeout(timer)
+      controller?.abort()
+      window.removeEventListener('focus', refresh)
+    }
   }, [])
 
   return (
-    <div className="min-h-screen bg-[#090f0f] text-slate-50">
+    <div className="landing-home min-h-screen bg-[#090f0f] text-slate-50">
       <LandingHeader copy={copy} onToggleLanguage={toggleLanguage} />
       <main>
         <HeroSection copy={copy} heroImageIndex={heroImageIndex} />
+        <ImpactStats />
+        <LiveDonations />
         <ForecastSection
           copy={copy}
           forecastCards={forecastCards}
@@ -688,8 +712,59 @@ function Home() {
 }
 
 function LandingHeader({ copy, onToggleLanguage }) {
+  const headerRef = useRef(null)
+  const [activeSection, setActiveSection] = useState(null)
+
+  useEffect(() => {
+    const sections = ['forecasts', 'news', 'contact']
+    const header = headerRef.current
+    let frame = 0
+    const measureHeader = () => {
+      header.parentElement.style.setProperty('--landing-header-height', `${header.getBoundingClientRect().height}px`)
+    }
+    const updateSelection = () => {
+      frame = 0
+      const threshold = header.getBoundingClientRect().bottom + Math.min(200, window.innerHeight * 0.25)
+      let selected = null
+      for (const id of sections) {
+        if (document.getElementById(id)?.getBoundingClientRect().top <= threshold) selected = id
+      }
+      // Short final sections may never reach the header before scrolling ends.
+      if (window.scrollY > 0 && window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2) selected = 'contact'
+      setActiveSection(selected)
+    }
+    const scheduleUpdate = () => {
+      if (!frame) frame = window.requestAnimationFrame(updateSelection)
+    }
+    const followHash = () => {
+      const id = window.location.hash.slice(1)
+      if (sections.includes(id)) {
+        setActiveSection(id)
+        document.getElementById(id)?.scrollIntoView({ block: 'start' })
+      } else scheduleUpdate()
+    }
+    const resize = () => { measureHeader(); scheduleUpdate() }
+    measureHeader()
+    followHash()
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(resize)
+    observer?.observe(header)
+    window.addEventListener('scroll', scheduleUpdate, { passive: true })
+    window.addEventListener('resize', resize)
+    window.addEventListener('hashchange', followHash)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      observer?.disconnect()
+      window.removeEventListener('scroll', scheduleUpdate)
+      window.removeEventListener('resize', resize)
+      window.removeEventListener('hashchange', followHash)
+    }
+  }, [])
+
+  const sectionClass = (id) => `rounded-md px-3 py-2 ${activeSection === id
+    ? 'text-emerald-300 underline decoration-emerald-300 underline-offset-8'
+    : 'hover:bg-white/[0.06] hover:text-white'}`
   return (
-    <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#0b1111]/95 backdrop-blur">
+    <header ref={headerRef} className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#0b1111]/95 backdrop-blur">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
         <Link className="flex items-center gap-3" to="/">
           <span className="grid h-9 w-9 place-items-center rounded-lg border border-emerald-300/10 bg-emerald-300/10">
@@ -699,16 +774,16 @@ function LandingHeader({ copy, onToggleLanguage }) {
         </Link>
 
         <nav className="order-3 flex w-full flex-wrap items-center justify-center gap-1 text-xs font-semibold text-slate-300 md:order-none md:w-auto">
-          <a className="rounded-md px-3 py-2 text-emerald-300 underline decoration-emerald-300 underline-offset-8" href="#forecasts">
+          <a className={sectionClass('forecasts')} aria-current={activeSection === 'forecasts' ? 'location' : undefined} href="#forecasts" onClick={() => setActiveSection('forecasts')}>
             {copy.nav.forecast}
           </a>
           <Link className="rounded-md px-3 py-2 hover:bg-white/[0.06] hover:text-white" to="/map">
             {copy.nav.map}
           </Link>
-          <a className="rounded-md px-3 py-2 hover:bg-white/[0.06] hover:text-white" href="#news">
+          <a className={sectionClass('news')} aria-current={activeSection === 'news' ? 'location' : undefined} href="#news" onClick={() => setActiveSection('news')}>
             {copy.nav.news}
           </a>
-          <a className="rounded-md px-3 py-2 hover:bg-white/[0.06] hover:text-white" href="#contact">
+          <a className={sectionClass('contact')} aria-current={activeSection === 'contact' ? 'location' : undefined} href="#contact" onClick={() => setActiveSection('contact')}>
             {copy.nav.contact}
           </a>
         </nav>
@@ -956,7 +1031,7 @@ function ForecastSection({ copy, forecastCards, waterDataStatus }) {
               {copy.forecast.title}
             </h2>
             <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-300">
-              {waterDataStatus === 'live' ? copy.forecast.sourceNote : copy.forecast.fallbackNote}
+              {['live', 'stale'].includes(waterDataStatus) ? copy.forecast.sourceNote : copy.forecast.fallbackNote}
             </p>
           </div>
           <div className="inline-flex w-fit rounded-xl border border-white/10 bg-white/[0.08] p-1 text-xs font-bold">
@@ -1024,7 +1099,7 @@ function ForecastSection({ copy, forecastCards, waterDataStatus }) {
                     {trend}
                   </span>
                   <span className="text-slate-500">
-                    {item.observedAt || (index === 0 ? 'Just now' : `${(index + 1) * 3}m ago`)}
+                    {item.observedAt || copy.forecast.sampleReading}
                   </span>
                 </div>
               </ScrollReveal>
@@ -1058,6 +1133,8 @@ function TelemetryTable({ copy, forecastCards, waterDataStatus }) {
   const rowsPerPage = 5
   const feedLabel = waterDataStatus === 'live'
     ? copy.forecast.liveFeed
+    : waterDataStatus === 'stale'
+      ? copy.forecast.staleFeed
     : waterDataStatus === 'loading'
       ? 'Loading feed'
       : 'Fallback feed'

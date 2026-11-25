@@ -9,7 +9,11 @@
     "start": "node index.js",
     "dev": "node --watch index.js",
     "db:seed": "node scripts/seed.js",
-    "db:query": "node scripts/query.js"
+    "db:seed:demo": "node scripts/seedDemo.js",
+    "db:query": "node scripts/query.js",
+    "db:migrate:impact": "node scripts/migrateImpactStats.js",
+    "db:migrate:dashboard": "node scripts/migrateDashboard.js",
+    "test": "node --test tests/*.test.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

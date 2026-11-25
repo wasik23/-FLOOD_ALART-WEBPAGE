@@ -62,6 +62,9 @@ router.post(
       if (!user || !(await user.verifyPassword(password))) {
         return res.status(401).json({ error: 'Invalid email or password.' })
       }
+      if (!user.isActive || (user.role === 'coordinator' && user.approvalStatus !== 'Approved')) {
+        return res.status(403).json({ error: 'This account is suspended or awaiting approval.' })
+      }
       const token = signToken(user)
       return res.json({ token, user: user.toSafeJSON() })
     } catch (err) {

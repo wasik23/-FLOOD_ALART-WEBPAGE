@@ -14,7 +14,7 @@ function DonationPage() {
         return response.json()
       })
       .then((payload) => {
-        if (Array.isArray(payload.accounts) && payload.accounts.length > 0) {
+        if (Array.isArray(payload.accounts)) {
           setAccounts(payload.accounts)
         }
       })

@@ -8,7 +8,6 @@ import ProtectedRoute from './components/ProtectedRoute.jsx'
 import AdminDashboard from './pages/AdminDashboard.jsx'
 import AuthForm from './pages/AuthForm.jsx'
 import CoordinatorDashboard from './pages/CoordinatorDashboard.jsx'
-import Dashboard from './pages/Dashboard.jsx'
 import DonationPage from './pages/DonationPage.jsx'
 import GetAlerts from './pages/GetAlerts.jsx'
 import HelpRequestPage from './pages/HelpRequestPage.jsx'
@@ -51,7 +50,7 @@ function App() {
 
         <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN]} />}>
           <Route element={<AppLayout />}>
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard" element={<Navigate to="/admin/dashboard" replace />} />
           </Route>
         </Route>
 

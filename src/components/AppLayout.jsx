@@ -4,6 +4,7 @@ import { ROLE_HOME_PATHS, ROLES } from '../auth/roles.js'
 import { useAuth } from '../auth/useAuth.js'
 import BrandHeader from './BrandHeader.jsx'
 import SiteFooter from './SiteFooter.jsx'
+import DashboardShell from './dashboard/DashboardShell.jsx'
 
 const getNavItems = (role, t) => {
   const items = [
@@ -43,6 +44,8 @@ function AppLayout() {
   const toggleLanguage = () => {
     i18n.changeLanguage(nextLanguage)
   }
+
+  if ([ROLES.ADMIN, ROLES.NGO].includes(user.role)) return <DashboardShell />
 
   return (
     <div className="flex min-h-screen flex-col bg-[#080d0d] text-slate-100">

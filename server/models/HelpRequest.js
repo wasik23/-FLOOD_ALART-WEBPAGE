@@ -17,6 +17,7 @@ export function initHelpRequest(sequelize) {
       address: { type: DataTypes.STRING(500), allowNull: false },
       needType: { type: DataTypes.ENUM(...HELP_NEED_TYPES), allowNull: false },
       peopleCount: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 1 },
+      familiesHelped: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
       notes: { type: DataTypes.TEXT, allowNull: true },
       status: {
         type: DataTypes.ENUM(...HELP_REQUEST_STATUSES),

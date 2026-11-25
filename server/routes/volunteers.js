@@ -23,12 +23,15 @@ const profileRules = [
 router.put('/me', requireAuth, requireRole('volunteer', 'coordinator', 'admin'), profileRules, handleValidation,
   async (req, res, next) => {
     try {
+      const editable = ['name', 'phone', 'address', 'guardianPhone', 'location', 'skills', 'availability', 'imageData', 'fieldReports']
+      const values = Object.fromEntries(editable.filter((key) => req.body[key] !== undefined).map((key) => [key, req.body[key]]))
+      values.email = req.user.email
       const [profile, created] = await VolunteerProfile.findOrCreate({
         where: { userId: req.user.id },
-        defaults: { ...req.body, userId: req.user.id },
+        defaults: { ...values, userId: req.user.id },
       })
       if (!created) {
-        await profile.update({ ...req.body, userId: req.user.id, externalUserId: profile.externalUserId })
+        await profile.update(values)
       }
       return res.status(created ? 201 : 200).json({ profile })
     } catch (error) {

@@ -18,12 +18,38 @@ copy .env.example .env
 # 4. start the API:          npm run dev
 ```
 
-The server listens on `http://localhost:3000`. The Vite dev server proxies
-`/api/*` to it (see `vite.config.js`).
+The server defaults to `http://localhost:3000`. Set `PORT` in `server/.env`
+to use a different port. The Vite dev proxy reads that same setting for
+`/api/*`, `/auth/*`, `/health`, and `/events/*` (see `vite.config.js`).
 
 ReliefOps uses MySQL for local development and production. Configure
 `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and `DB_PASSWORD` in `server/.env`
 before seeding or starting the backend.
+
+### Sample operational data
+
+With MySQL connected, run `npm run db:seed:demo` from `server/`. This inserts
+clearly labeled development users, volunteer profiles, requests, receipts,
+shelters, field tasks, alerts, water reports and an audit entry. The sample
+payment account is inactive. Subscriber records and existing operational
+records are preserved; this script does not send SMS or email.
+
+The initial sample receipts total **BDT 325,500**, excluding one refunded
+receipt. Completed sample requests record **23 families helped**. These are
+development examples, not actual donations or assistance outcomes.
+
+Sample sign-in accounts are `demo.admin@example.test` (admin) and
+`demo.coordinator@example.test` (NGO coordinator). Their initial password is
+`DemoRelief!2026`, or `SEED_DEMO_PASSWORD` when configured before seeding.
+The script uses stable keys and a transaction: rerunning it does not duplicate
+receipts or overwrite passwords, operator edits, or outcomes. It refuses to
+run with `NODE_ENV=production`.
+
+It also creates the development accounts listed in the main README:
+`admin@example.com`, `coordinator@example.com`, and `volunteer@example.com`.
+Their initial password is `password`, or `SEED_DEMO_PASSWORD` if configured.
+Existing accounts keep their passwords, approval and suspension state; a
+conflicting existing role causes the seed transaction to roll back.
 
 ## REST API overview
 
@@ -184,3 +210,130 @@ a resource name. API collection routes support pagination through `page` and
 Production startup requires `JWT_SECRET`, `CLIENT_ORIGIN`, and
 `WATER_LEVEL_EVENT_TOKEN`. Public write endpoints are rate limited and
 subscriber/operator endpoints require an admin or coordinator JWT.
+
+## Homepage impact statistics and donation ledger
+
+`GET /api/impact-stats` is public and returns aggregate totals from MySQL:
+
+```json
+{
+  "donationsTaka": "4820000.00",
+  "familiesHelped": 12430,
+  "activeVolunteers": 1284,
+  "reliefCampsOpen": 76,
+  "updatedAt": "2026-11-23T00:00:00.000Z"
+}
+```
+
+These are example response values, not seeded records. The homepage loads this
+endpoint, refreshes every minute and on window focus, and animates the first
+result. While the backend is unavailable, the frontend shows labeled mock totals
+and donation entries and retries every 15 seconds. Successful datastore responses
+replace these previews, including genuine zero totals and an empty ledger. Mock
+data is read-only frontend data and is never inserted into MySQL.
+
+- **Taka donated:** the sum of `donation_receipts.amount` with status `Received`.
+  Amounts are stored as `DECIMAL(14,2)` in BDT; refunded receipts are excluded.
+- **Families helped:** the sum of the operator-entered `help_requests.families_helped`
+  on `Completed` requests. This counts recorded family-support outcomes across
+  cases, not deduplicated households. Existing records default to zero until an
+  operator records their outcome; `people_count` is not treated as a family count.
+- **Active volunteers:** active volunteer profiles linked to a user with role
+  `volunteer`, irrespective of current availability.
+- **Relief camps open:** shelters with `is_active = true`, including full camps.
+
+NGO/admin users can record receipts and supported-family counts on `/records`.
+The new receipt endpoints require an admin or coordinator JWT:
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/api/donations/receipts?page=1&limit=25` | Paginated private ledger |
+| POST | `/api/donations/receipts` | Record a confirmed receipt |
+| PATCH | `/api/donations/receipts/:id` | Set `status` to `Received` or `Refunded` |
+| PATCH | `/api/help-requests/:id` | Save `familiesHelped` and request `status` |
+
+Receipt creation accepts `amount` (prefer a decimal string), `reference` (unique
+transaction ID or receipt number), `channel` (`Cash`, `bKash`, `Nagad`, `Bank transfer`,
+or `Other`), and optional `donorName`, `receivedAt` (ISO timestamp), and `notes`.
+Duplicate references return 409. The server records the operator; the public
+statistics response never includes donor names, payment references, or contacts.
+This ledger records money already received; payment collection remains external.
+
+Safe/alter/force database startup applies the targeted, idempotent impact migration.
+For `DB_SYNC=off`, or to migrate an existing database separately, run from `server/`:
+
+```bash
+npm run db:migrate:impact
+npm run db:query -- donation-receipts --limit=20
+npm test
+```
+
+The migration creates the receipt table and adds `families_helped` if absent,
+without resetting existing data. API tests use isolated model stubs and do not
+write to the configured database.
+
+### Live donations
+
+The homepage's live donations card reads `GET /api/donations/live?limit=4`.
+The public endpoint returns the newest `Received` receipts, with only `id`,
+`displayName`, `amount`, and `receivedAt`. The maximum requested limit is 20.
+Refunded receipts, private notes, transaction references, and operator details
+are excluded.
+
+Receipts have `isAnonymous: true` by default. The same migration adds
+`is_anonymous` to existing ledgers with a true default, keeping earlier donor
+names private. Operators can choose anonymity when recording a receipt or
+change it later on `/records`. When anonymity is disabled, the public feed
+shows the first name and last-name initial (for example, `Rahim U.`).
+Blank donor names remain anonymous.
+
+Receipt creation and status/privacy changes emit the public `donation_update`
+Socket.IO event containing only an update timestamp. The card reloads on that
+event and reconnect, and polls every 15 seconds as a fallback. Time labels use
+the receipt's actual received timestamp and support English and Bangla.
+
+## Admin and NGO dashboards
+
+The approved dashboard layout is implemented at `/admin/dashboard` and
+`/coordinator`, with a responsive sidebar and route-based views for requests,
+volunteers, donation records, alerts, and activity. `/dashboard` redirects to
+the admin overview. The shared Records page now saves donation account settings
+through the backend rather than treating a browser-local copy as authoritative.
+
+`GET /api/dashboard/overview` requires an admin or approved coordinator JWT.
+It accepts `districtId`, `status`, `page`, and `q`, returns genuine summaries,
+seven donation days in Bangladesh time, paginated requests, eligible volunteers,
+and recent donation receipts. NGO callers do not receive the admin account list
+or audit history. Demo mode uses read-only examples when the backend is
+unavailable; API authentication/permission errors require a valid sign-in and do
+not turn into a writable demo session.
+
+| Method | Path | Access / effect |
+| --- | --- | --- |
+| POST | `/api/dashboard/ngos` | Admin creates a pending coordinator account with a hashed temporary password |
+| PATCH | `/api/dashboard/ngos/:id` | Admin approves, suspends, or restores coordinator access |
+| GET | `/api/dashboard/volunteers/:userId` | Admin/coordinator reads volunteer registration details; response is not cached |
+| PATCH | `/api/dashboard/volunteers/:userId` | Admin/coordinator verifies or suspends a volunteer |
+| PATCH | `/api/help-requests/:id` | Saves assignment/outcome with an audit entry in the same transaction |
+
+New `users.is_active` and `users.approval_status` fields are enforced on login
+and on every protected request. Existing accounts are migrated as active and
+approved to preserve legitimate access. New coordinator accounts start pending.
+Profile owners cannot write `verified`, `isActive`, IDs, or another user's email.
+Assignment requires an active, verified, available volunteer. Task acceptance
+requires volunteer approval and uses a conditional update to prevent two users
+accepting the same open task.
+
+Normal database synchronization runs the targeted dashboard migration. With
+`DB_SYNC=off`, run this from `server/` before starting the updated API:
+
+```bash
+npm run db:migrate:impact
+npm run db:migrate:dashboard
+npm test
+```
+
+The migration also creates `audit_entries`. Dashboard tests use isolated model
+stubs; they do not mutate the configured datastore or send external messages.
+The request report export contains the currently loaded request rows, and escapes
+spreadsheet formula prefixes in user-entered values.
